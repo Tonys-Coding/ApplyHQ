@@ -91,3 +91,52 @@ export type ApplicationStage =
 
 /** Days without a stage change before the Ghosting Watchdog flags a card. */
 export const GHOST_THRESHOLD_DAYS = 14
+
+/**
+ * How much licence the copilot has when rewriting.
+ *
+ * `strict` is the safety rail that makes this tool usable for real applications:
+ * it may only reorder, hide, and reword existing content. It may not invent a
+ * skill, a metric, or a date. Fabrication on a resume is not a style choice.
+ */
+export type Strictness = 'strict' | 'balanced' | 'creative'
+
+export const STRICTNESS_LABELS: Record<Strictness, string> = {
+  strict: 'Strict — reword only, never invent',
+  balanced: 'Balanced — may infer implied skills',
+  creative: 'Creative — may suggest new phrasing',
+}
+
+/** One entry in the copilot's change log. */
+export interface ChangeLogEntry {
+  id: string
+  timestamp: string
+  kind: 'ai_edit' | 'visibility' | 'format' | 'user_edit'
+  summary: string
+  /** id of the Bullet or section entry this touched, when applicable. */
+  node_id?: string
+  before?: string
+  after?: string
+}
+
+/** Any resume node that can be hidden — the shared shape the editor walks. */
+export type ResumeNode = EducationEntry | TechnicalEntry | WorkEntry
+
+/** Which array of the resumes table a node came from. */
+export type ResumeSectionKey =
+  | 'education'
+  | 'technical_projects_and_experience'
+  | 'other_work_history'
+
+export const SECTION_LABELS: Record<ResumeSectionKey, string> = {
+  education: 'Education',
+  technical_projects_and_experience: 'Technical Projects & Experience',
+  other_work_history: 'Work History',
+}
+
+/** Display title for a node, whichever section shape it has. */
+export function nodeTitle(node: ResumeNode): string {
+  if ('institution' in node) return node.institution
+  if ('title' in node) return node.title
+  return node.employer
+}
