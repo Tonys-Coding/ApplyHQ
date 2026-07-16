@@ -6,6 +6,12 @@
     "module": "preserve",
     "moduleResolution": "bundler",
     "types": ["bun"],
+    // server/ imports a few pure modules out of src/ (shared domain types, the
+    // term-preset regexes) and those files use the @/ alias internally, so the
+    // server project has to resolve it too.
+    "paths": {
+      "@/*": ["./src/*"]
+    },
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",

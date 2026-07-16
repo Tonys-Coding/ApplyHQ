@@ -27,3 +27,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Disk-backed API cache (JSearch quota protection)
+.cache/

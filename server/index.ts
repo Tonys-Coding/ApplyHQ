@@ -1,5 +1,7 @@
 import { env } from './lib/env'
 import { parseResume } from './routes/resume'
+import { searchJobsRoute } from './routes/jobs'
+import { copilotRoute, fitScoreRoute, structureRoute, tailorRoute } from './routes/ai'
 
 /**
  * ApplyHQ API.
@@ -21,9 +23,17 @@ const server = Bun.serve({
   routes: {
     '/api/health': new Response('ok'),
 
-    '/api/resume/parse': {
-      POST: parseResume,
-    },
+    // Deterministic: PDF bytes -> text. No model, no cost.
+    '/api/resume/parse': { POST: parseResume },
+
+    // Cached + quota-guarded. See lib/cache.ts for why it's disk-backed.
+    '/api/jobs/search': { GET: searchJobsRoute },
+
+    // Every route below spends OpenAI tokens on each call.
+    '/api/ai/fit-score': { POST: fitScoreRoute },
+    '/api/ai/tailor': { POST: tailorRoute },
+    '/api/ai/copilot': { POST: copilotRoute },
+    '/api/ai/structure': { POST: structureRoute },
   },
 
   fetch() {
