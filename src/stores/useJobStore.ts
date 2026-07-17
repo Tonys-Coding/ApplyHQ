@@ -240,3 +240,15 @@ export function selectColumn(
 export function selectGhostedCount(apps: JobApplication[], now: number = Date.now()): number {
   return withGhostFlags(apps, now).filter((a) => a.isGhosted).length
 }
+
+/**
+ * Apply links already on the board.
+ *
+ * The Discover feed uses this to show a job as "Saved" and block a second copy.
+ * We dedupe on application_url because job_applications has no external-id
+ * column — the apply link is the only stable identity a JSearch posting carries
+ * across into the tracker.
+ */
+export function selectSavedApplyLinks(apps: JobApplication[]): Set<string> {
+  return new Set(apps.map((a) => a.application_url).filter((u): u is string => !!u))
+}
