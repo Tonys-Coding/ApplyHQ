@@ -1,6 +1,5 @@
 import { Eye, History, Pencil, Ruler, Sparkles } from 'lucide-react'
 import { useResumeStore } from '@/stores/useResumeStore'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { ChangeLogEntry } from '@/types/domain'
@@ -31,7 +30,7 @@ export function ChangeLog() {
   const clearLog = useResumeStore((s) => s.clearLog)
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex flex-col">
       <div className="flex items-center gap-2 px-3 py-2">
         <History className="size-3.5 text-muted-foreground" />
         <span className="text-xs font-medium">Changes</span>
@@ -47,7 +46,7 @@ export function ChangeLog() {
         )}
       </div>
 
-      <ScrollArea className="min-h-0 flex-1">
+      <div>
         {changeLog.length === 0 ? (
           <p className="px-3 py-6 text-center text-xs text-muted-foreground">
             Edits and AI tailoring will be itemized here, so nothing changes on your
@@ -79,7 +78,7 @@ export function ChangeLog() {
             })}
           </ul>
         )}
-      </ScrollArea>
+      </div>
     </div>
   )
 }

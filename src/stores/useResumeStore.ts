@@ -6,9 +6,15 @@ import {
   type Bullet,
   type ChangeLogEntry,
   type FormatSettings,
+  type ResumeEditPlan,
   type ResumeSectionKey,
   type Strictness,
 } from '@/types/domain'
+import {
+  applyEditPlan,
+  type ApplyResult,
+  type ResumeSections,
+} from '@/features/resume/lib/editPlan'
 
 interface ResumeState {
   resume: Resume | null
@@ -20,16 +26,23 @@ interface ResumeState {
   strictness: Strictness
   /** Set when tailoring against a specific job; null on the master resume. */
   targetApplicationId: string | null
+  /** The target job's description text — passed to the copilot as context. */
+  jobContext: string | null
 
   loadResume: (id: string) => Promise<void>
   loadMaster: () => Promise<void>
   setFormat: (patch: Partial<FormatSettings>) => void
   setStrictness: (s: Strictness) => void
-  setTargetApplication: (id: string | null) => void
+  setTargetApplication: (id: string | null, jobContext?: string | null) => void
 
   toggleNode: (section: ResumeSectionKey, nodeId: string) => void
   toggleBullet: (section: ResumeSectionKey, nodeId: string, bulletId: string) => void
   editBullet: (section: ResumeSectionKey, nodeId: string, bulletId: string, text: string) => void
+
+  /** Current resume as the bare sections the edit-plan engine needs. */
+  sections: () => ResumeSections | null
+  /** Apply a model edit plan to live state, logging every change. */
+  applyPlan: (plan: ResumeEditPlan) => ApplyResult | null
 
   logChange: (entry: Omit<ChangeLogEntry, 'id' | 'timestamp'>) => void
   clearLog: () => void
@@ -47,6 +60,7 @@ export const useResumeStore = create<ResumeState>((set, get) => ({
   changeLog: [],
   strictness: 'strict',
   targetApplicationId: null,
+  jobContext: null,
 
   loadResume: async (id) => {
     set({ loading: true, error: null })
@@ -79,7 +93,58 @@ export const useResumeStore = create<ResumeState>((set, get) => ({
 
   setFormat: (patch) => set({ format: { ...get().format, ...patch } }),
   setStrictness: (strictness) => set({ strictness }),
-  setTargetApplication: (targetApplicationId) => set({ targetApplicationId }),
+  setTargetApplication: (targetApplicationId, jobContext = null) =>
+    set({ targetApplicationId, jobContext }),
+
+  sections: () => {
+    const r = get().resume
+    if (!r) return null
+    return {
+      education: r.education,
+      technical_projects_and_experience: r.technical_projects_and_experience,
+      other_work_history: r.other_work_history,
+      skills_and_keywords: r.skills_and_keywords,
+    }
+  },
+
+  /**
+   * Applies a model edit plan to the LIVE store state.
+   *
+   * The client runs the same applyEditPlan the server does, against whatever the
+   * canvas currently shows, so re-render touches exactly the edited nodes and
+   * leaves everything else referentially unchanged. Every applied op becomes a
+   * change-log entry; rejected ops (hallucinated ids) are returned for the
+   * caller to surface rather than silently dropped.
+   */
+  applyPlan: (plan) => {
+    const resume = get().resume
+    const current = get().sections()
+    if (!resume || !current) return null
+
+    const result = applyEditPlan(current, plan)
+
+    set({
+      resume: {
+        ...resume,
+        education: result.resume.education,
+        technical_projects_and_experience: result.resume.technical_projects_and_experience,
+        other_work_history: result.resume.other_work_history,
+        skills_and_keywords: result.resume.skills_and_keywords,
+      },
+    })
+
+    for (const change of result.applied) {
+      get().logChange({
+        kind: 'ai_edit',
+        node_id: change.bullet_id ?? change.entry_id ?? undefined,
+        summary: change.rationale,
+        before: change.before ?? undefined,
+        after: change.after ?? undefined,
+      })
+    }
+
+    return result
+  },
 
   /**
    * Visibility toggles mutate in place and never delete.
@@ -202,5 +267,6 @@ export const useResumeStore = create<ResumeState>((set, get) => ({
       format: DEFAULT_FORMAT_SETTINGS,
       changeLog: [],
       targetApplicationId: null,
+      jobContext: null,
     }),
 }))

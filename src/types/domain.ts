@@ -140,3 +140,35 @@ export function nodeTitle(node: ResumeNode): string {
   if ('title' in node) return node.title
   return node.employer
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Edit-plan contract
+//
+// Plain-TS mirror of server/schemas/resume.ts's zod ResumeOperation. Defined
+// here, in the shared module, so BOTH the client applyEditPlan and the server
+// zod schema reference one shape — the algorithm runs identically on either
+// side (the client applies what the model returns; the server validates it).
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type ResumeOpKind =
+  | 'rewrite_bullet'
+  | 'set_bullet_hidden'
+  | 'set_entry_hidden'
+  | 'set_skills'
+
+export interface ResumeOperation {
+  op: ResumeOpKind
+  section: ResumeSectionKey | null
+  entry_id: string | null
+  bullet_id: string | null
+  text: string | null
+  hidden: boolean | null
+  skills: string[] | null
+  /** One sentence, shown verbatim in the change log. */
+  rationale: string
+}
+
+export interface ResumeEditPlan {
+  operations: ResumeOperation[]
+  summary: string
+}
