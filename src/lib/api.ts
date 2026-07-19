@@ -24,10 +24,14 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   const token = await getAccessToken()
   if (!token) throw new ApiError('Not signed in.', 401)
 
+  // For FormData the browser must set its own multipart boundary — forcing a
+  // Content-Type here would corrupt the upload. Only JSON bodies get the header.
+  const isForm = init?.body instanceof FormData
+
   const res = await fetch(path, {
     ...init,
     headers: {
-      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(init?.body && !isForm ? { 'Content-Type': 'application/json' } : {}),
       ...init?.headers,
       Authorization: `Bearer ${token}`,
     },

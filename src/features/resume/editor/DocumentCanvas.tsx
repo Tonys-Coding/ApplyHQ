@@ -1,5 +1,6 @@
 import { EyeOff } from 'lucide-react'
 import { useResumeStore } from '@/stores/useResumeStore'
+import { ResumeUpload } from '@/components/ResumeUpload'
 import { cn } from '@/lib/utils'
 import {
   SECTION_LABELS,
@@ -122,13 +123,7 @@ export function DocumentCanvas() {
   const format = useResumeStore((s) => s.format)
 
   if (!resume) {
-    return (
-      <div className="grid h-full place-items-center p-8 text-center text-sm text-muted-foreground">
-        <div className="max-w-xs">
-          No resume loaded yet. Upload a PDF and we'll parse it into editable sections.
-        </div>
-      </div>
-    )
+    return <ResumeUpload />
   }
 
   return (
