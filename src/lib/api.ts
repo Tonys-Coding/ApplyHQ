@@ -35,6 +35,15 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string }
+    // 502/503/504 with no JSON body of ours = the Bun API isn't answering.
+    // In dev that almost always means it wasn't started. Say so plainly rather
+    // than surfacing a bare "Request failed (502)".
+    if (!body.error && [502, 503, 504].includes(res.status)) {
+      throw new ApiError(
+        'Cannot reach the API server on :3001. Start it with `bun run dev` (runs web + api together).',
+        res.status,
+      )
+    }
     throw new ApiError(body.error ?? `Request failed (${res.status})`, res.status)
   }
   return res.json() as Promise<T>
