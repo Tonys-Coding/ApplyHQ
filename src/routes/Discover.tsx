@@ -8,7 +8,7 @@ import {
 } from '@/features/discovery/components/SearchControls'
 import { JobCard } from '@/features/discovery/components/JobCard'
 import { useJobStore, selectSavedApplyLinks } from '@/stores/useJobStore'
-import { TopBar } from '@/components/layout/TopBar'
+import { PageHeader } from '@/components/layout/PageHeader'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 
@@ -53,14 +53,13 @@ export function Discover() {
   }
 
   return (
-    <>
-      <TopBar title="Discover">
-        <QuotaPill cached={data?.cached} remaining={data?.quotaRemaining ?? null} />
-      </TopBar>
+    <div className="min-h-0 flex-1 overflow-auto">
+      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 md:px-8">
+        <PageHeader title="Discover" subtitle="Live roles from across the web, matched to your cycle.">
+          <QuotaPill cached={data?.cached} remaining={data?.quotaRemaining ?? null} />
+        </PageHeader>
 
-      <div className="min-h-0 flex-1 overflow-auto">
-        <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
-          <SearchControls
+        <SearchControls
             draft={draft}
             onDraftChange={(patch) => setDraft((d) => ({ ...d, ...patch }))}
             onSubmit={() => setCommitted({ ...draft, terms: [] })}
@@ -84,14 +83,18 @@ export function Discover() {
               </div>
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 {jobs.map((job) => (
-                  <JobCard key={job.id} job={job} saved={savedLinks.has(job.applyLink)} />
+                  <JobCard
+                    key={job.id}
+                    job={job}
+                    saved={savedLinks.has(job.applyLink)}
+                    siblings={jobs}
+                  />
                 ))}
               </div>
             </>
           )}
-        </div>
       </div>
-    </>
+    </div>
   )
 }
 

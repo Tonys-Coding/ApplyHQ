@@ -3,14 +3,11 @@ import { useResumeStore } from '@/stores/useResumeStore'
 import { FormatToolbar } from '@/features/resume/editor/FormatToolbar'
 import { DocumentCanvas } from '@/features/resume/editor/DocumentCanvas'
 import { CopilotSidebar } from '@/features/resume/copilot/CopilotSidebar'
-import { TopBar } from '@/components/layout/TopBar'
 
 /**
- * Split-screen workspace.
+ * Split-screen workspace, rendered below the global TopNav.
  *
- *   ┌──────────────────────────────────────────────┐
- *   │ TopBar                                       │
- *   ├──────────────────────────────────────────────┤
+ *   ┌───────────────────────────┬──────────────────┐
  *   │ FormatToolbar (font / leading / margin / fit)│
  *   ├───────────────────────────┬──────────────────┤
  *   │ DocumentCanvas            │ CopilotSidebar   │
@@ -23,15 +20,13 @@ import { TopBar } from '@/components/layout/TopBar'
  */
 export function ResumeWorkspace() {
   const loadMaster = useResumeStore((s) => s.loadMaster)
-  const resume = useResumeStore((s) => s.resume)
 
   useEffect(() => {
     void loadMaster()
   }, [loadMaster])
 
   return (
-    <>
-      <TopBar title={resume ? `Resume — ${resume.version_name}` : 'Resume'} />
+    <div className="flex min-h-0 flex-1 flex-col">
       <FormatToolbar />
       <div className="flex min-h-0 flex-1">
         <div className="min-w-0 flex-1">
@@ -39,6 +34,6 @@ export function ResumeWorkspace() {
         </div>
         <CopilotSidebar />
       </div>
-    </>
+    </div>
   )
 }

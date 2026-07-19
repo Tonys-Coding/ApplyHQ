@@ -6,6 +6,7 @@ import { AppShell } from '@/components/layout/AppShell'
 import { Auth } from '@/routes/Auth'
 import { Board } from '@/routes/Board'
 import { Discover } from '@/routes/Discover'
+import { JobDetail } from '@/routes/JobDetail'
 import { ResumeWorkspace } from '@/routes/ResumeWorkspace'
 
 /**
@@ -33,6 +34,7 @@ export default function App() {
             <Route element={<AppShell />}>
               <Route path="/board" element={<Board />} />
               <Route path="/discover" element={<Discover />} />
+              <Route path="/discover/:id" element={<JobDetail />} />
               <Route path="/workspace" element={<ResumeWorkspace />} />
             </Route>
             <Route path="*" element={<Navigate to="/board" replace />} />

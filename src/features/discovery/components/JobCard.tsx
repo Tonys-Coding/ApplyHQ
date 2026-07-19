@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Building2,
   Check,
@@ -13,15 +14,31 @@ import { toast } from 'sonner'
 import type { JobPosting } from '@/types/jobs'
 import { TERM_LABELS } from '@/features/discovery/lib/termPresets'
 import { mapPostingToApplication } from '@/features/discovery/lib/mapToApplication'
+import { useSelectedJob } from '@/features/discovery/store/useSelectedJob'
 import { useJobStore } from '@/stores/useJobStore'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 
-export function JobCard({ job, saved }: { job: JobPosting; saved: boolean }) {
+export function JobCard({
+  job,
+  saved,
+  siblings,
+}: {
+  job: JobPosting
+  saved: boolean
+  siblings: JobPosting[]
+}) {
   const createApplication = useJobStore((s) => s.createApplication)
+  const openJob = useSelectedJob((s) => s.open)
+  const navigate = useNavigate()
   const [saving, setSaving] = useState(false)
+
+  function openDetail() {
+    openJob(job, siblings)
+    navigate(`/discover/${job.id}`)
+  }
 
   const hasTerms = job.terms.length > 0
 
@@ -71,9 +88,13 @@ export function JobCard({ job, saved }: { job: JobPosting; saved: boolean }) {
         </div>
 
         <div className="min-w-0 flex-1">
-          <h3 className="font-heading truncate text-base font-semibold leading-snug">
+          <button
+            type="button"
+            onClick={openDetail}
+            className="font-heading block max-w-full truncate text-left text-base font-semibold leading-snug transition-colors hover:text-primary"
+          >
             {job.title}
-          </h3>
+          </button>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <Building2 className="size-3" />
@@ -139,9 +160,12 @@ export function JobCard({ job, saved }: { job: JobPosting; saved: boolean }) {
           {saved ? 'Saved to tracker' : 'Save to tracker'}
         </Button>
 
-        <Button asChild variant="outline" size="sm">
-          <a href={job.applyLink} target="_blank" rel="noopener noreferrer">
-            Apply
+        <Button variant="outline" size="sm" onClick={openDetail}>
+          Details
+        </Button>
+
+        <Button asChild variant="ghost" size="sm">
+          <a href={job.applyLink} target="_blank" rel="noopener noreferrer" aria-label="Open application link">
             <ExternalLink className="size-3.5" />
           </a>
         </Button>

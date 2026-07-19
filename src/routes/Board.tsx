@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useJobStore, selectColumn } from '@/stores/useJobStore'
 import { STAGES, STAGE_LABELS } from '@/features/kanban/lib/stages'
-import { TopBar } from '@/components/layout/TopBar'
+import { PageHeader } from '@/components/layout/PageHeader'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
@@ -21,9 +21,9 @@ export function Board() {
   }, [fetchApplications])
 
   return (
-    <>
-      <TopBar title="Tracker" />
-      <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto p-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 p-4 md:px-8">
+      <PageHeader title="Tracker" subtitle="Every application, from submitted to offer." />
+      <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto pb-2">
         {STAGES.map((stage) => {
           const column = selectColumn(applications, stage)
           return (
@@ -64,6 +64,6 @@ export function Board() {
           )
         })}
       </div>
-    </>
+    </div>
   )
 }

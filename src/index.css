@@ -46,9 +46,16 @@
     --color-foreground: var(--foreground);
     --color-background: var(--background);
 
-    /* Extra tokens beyond shadcn's set:
-       - coral: the TalentPulse red CTA / high-alert accent (criticalGaps, Apply)
+    /* Tokens beyond shadcn's set, from the TalentPulse references:
+       - brand alias of primary — the rose #E11D48 signature CTA colour
+       - indigo / indigo-light: focus rings, informational accents, link text
+       - coral: the deep-red (#a40217) login gradient + secondary CTA
        - success / warning: fit-score and ghost states */
+    --color-brand: var(--primary);
+    --color-brand-foreground: var(--primary-foreground);
+    --color-indigo: var(--indigo);
+    --color-indigo-foreground: var(--indigo-foreground);
+    --color-indigo-light: var(--indigo-light);
     --color-coral: var(--coral);
     --color-coral-foreground: var(--coral-foreground);
     --color-success: var(--success);
@@ -74,17 +81,20 @@
     --card-foreground: oklch(0.205 0 0);
     --popover: oklch(1 0 0);
     --popover-foreground: oklch(0.205 0 0);
-    --primary: oklch(0.28 0.04 260);
-    --primary-foreground: oklch(0.985 0 0);
+    --primary: #e11d48;
+    --primary-foreground: #ffffff;
     --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.28 0.04 260);
+    --secondary-foreground: oklch(0.205 0 0);
     --muted: oklch(0.97 0 0);
     --muted-foreground: oklch(0.52 0.02 285);
     --accent: oklch(0.97 0 0);
     --accent-foreground: oklch(0.205 0 0);
     --destructive: oklch(0.577 0.245 27.325);
-    --coral: oklch(0.51 0.21 24);
-    --coral-foreground: oklch(0.98 0.01 20);
+    --indigo: #4f46e5;
+    --indigo-foreground: #ffffff;
+    --indigo-light: #4338ca;
+    --coral: #a40217;
+    --coral-foreground: #ffffff;
     --success: oklch(0.62 0.17 150);
     --success-foreground: oklch(0.98 0 0);
     --warning: oklch(0.75 0.16 70);
@@ -100,16 +110,19 @@
     --radius: 0.5rem;
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.205 0 0);
-    --sidebar-primary: oklch(0.28 0.04 260);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-primary: #e11d48;
+    --sidebar-primary-foreground: #ffffff;
     --sidebar-accent: oklch(0.97 0 0);
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.6 0.02 285);
+    --sidebar-ring: #4f46e5;
 }
 
-/* TalentPulse dark palette. Hex from the reference, kept literal so the match
-   is verifiable against the source file rather than approximated in oklch. */
+/* TalentPulse dark palette. Hex from the reference files, kept literal so the
+   match is verifiable against the source rather than approximated in oklch.
+
+   Signature: rose brand (#E11D48) for CTAs/active states, indigo (#4f46e5) for
+   focus + informational accents, deep coral (#a40217) for the login gradient. */
 .dark {
     --background: #131313;          /* surface / background */
     --foreground: #e5e2e1;          /* on-surface */
@@ -117,8 +130,8 @@
     --card-foreground: #e5e2e1;
     --popover: #201f1f;
     --popover-foreground: #e5e2e1;
-    --primary: #cbd5e1;             /* slate — main actions */
-    --primary-foreground: #0f172a;  /* on-primary */
+    --primary: #e11d48;             /* brand-red — main CTAs, active nav */
+    --primary-foreground: #ffffff;
     --secondary: #2a2a2a;           /* surface-container-high — chips */
     --secondary-foreground: #e5e2e1;
     --muted: #201f1f;
@@ -126,7 +139,10 @@
     --accent: #2a2a2a;
     --accent-foreground: #e5e2e1;
     --destructive: #ffb4ab;         /* error */
-    --coral: #a40217;               /* secondary-container — CTA / high alert */
+    --indigo: #4f46e5;              /* primary-container — focus / accent fills */
+    --indigo-foreground: #ffffff;
+    --indigo-light: #c3c0ff;        /* primary — link text on dark */
+    --coral: #a40217;               /* secondary-container — login gradient / CTA */
     --coral-foreground: #ffdad7;    /* on-secondary-container */
     --success: #7fcf9a;
     --success-foreground: #06210f;
@@ -134,20 +150,20 @@
     --warning-foreground: #341100;
     --border: oklch(1 0 0 / 7%);    /* the reference's white/5 hairlines */
     --input: oklch(1 0 0 / 12%);
-    --ring: #cbd5e1;
-    --chart-1: #cbd5e1;
-    --chart-2: #ffb3ad;
+    --ring: #4f46e5;                /* indigo focus ring, per the login inputs */
+    --chart-1: #e11d48;
+    --chart-2: #4f46e5;
     --chart-3: #ffb690;
     --chart-4: #7fcf9a;
-    --chart-5: #918fa1;
-    --sidebar: #1c1b1b;             /* surface-container-low */
+    --chart-5: #c3c0ff;
+    --sidebar: #0e0e0e;             /* surface-container-lowest */
     --sidebar-foreground: #e5e2e1;
-    --sidebar-primary: #cbd5e1;
-    --sidebar-primary-foreground: #0f172a;
-    --sidebar-accent: #2a2a2a;
+    --sidebar-primary: #e11d48;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #201f1f;
     --sidebar-accent-foreground: #e5e2e1;
     --sidebar-border: oklch(1 0 0 / 7%);
-    --sidebar-ring: #cbd5e1;
+    --sidebar-ring: #4f46e5;
 }
 
 @layer base {
@@ -170,4 +186,9 @@
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   border-left: 1px solid rgba(255, 255, 255, 0.05);
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+}
+
+/* The login brand panel gradient, straight from the reference. */
+@utility kinetic-gradient {
+  background: linear-gradient(135deg, #a40217 0%, #68000a 100%);
 }

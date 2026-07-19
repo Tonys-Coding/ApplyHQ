@@ -4,7 +4,7 @@ import { searchJobsRoute } from './routes/jobs'
 import { copilotRoute, fitScoreRoute, structureRoute, tailorRoute } from './routes/ai'
 
 /**
- * ApplyHQ API.
+ * TalentPulse API.
  *
  * Exists for one reason: OPENAI_API_KEY, RAPIDAPI_KEY, and the Supabase
  * service-role key cannot go in the client. Vite inlines every VITE_* var into
@@ -48,5 +48,5 @@ const server = Bun.serve({
   },
 })
 
-console.log(`ApplyHQ API listening on http://localhost:${server.port}`)
+console.log(`TalentPulse API listening on http://localhost:${server.port}`)
 console.log(`  models: tailor=${env.modelTailor}  fast=${env.modelFast}`)
