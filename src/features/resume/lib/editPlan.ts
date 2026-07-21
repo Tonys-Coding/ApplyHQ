@@ -3,6 +3,7 @@ import type {
   EducationEntry,
   ResumeEditPlan,
   ResumeOperation,
+  ResumeSectionKey,
   TechnicalEntry,
   WorkEntry,
 } from '@/types/domain'
@@ -98,6 +99,57 @@ export function applyEditPlan(resume: ResumeSections, plan: ResumeEditPlan): App
       continue
     }
 
+    // Relocate an entry to a different section, transforming its shape. This is
+    // what lets the AI honor "move this from Experience to Work History".
+    if (op.op === 'move_entry') {
+      if (!op.to_section) {
+        rejected.push({ op, reason: 'move_entry without to_section' })
+        continue
+      }
+      if (op.to_section === op.section) {
+        rejected.push({ op, reason: 'move_entry to the same section' })
+        continue
+      }
+      // Cast away the per-key union so we can move between differently-shaped
+      // section arrays; transferEntry produces the correct target shape.
+      const sections = next as unknown as Record<ResumeSectionKey, AnyEntry[]>
+      sections[op.section] = entries.filter((e) => e.id !== entry.id)
+      sections[op.to_section].push(transferEntry(entry, op.to_section, op.entry_kind))
+      applied.push({
+        op: op.op,
+        entry_id: entry.id,
+        bullet_id: null,
+        rationale: op.rationale,
+        before: op.section,
+        after: op.to_section,
+      })
+      continue
+    }
+
+    // Flip a technical entry between the Experience and Projects sub-sections.
+    if (op.op === 'set_entry_kind') {
+      if (op.section !== 'technical_projects_and_experience') {
+        rejected.push({ op, reason: 'set_entry_kind only applies to technical entries' })
+        continue
+      }
+      if (!op.entry_kind) {
+        rejected.push({ op, reason: 'set_entry_kind without entry_kind' })
+        continue
+      }
+      const t = entry as TechnicalEntry
+      const before = t.kind
+      t.kind = op.entry_kind
+      applied.push({
+        op: op.op,
+        entry_id: entry.id,
+        bullet_id: null,
+        rationale: op.rationale,
+        before,
+        after: op.entry_kind,
+      })
+      continue
+    }
+
     switch (op.op) {
       case 'set_entry_hidden': {
         if (op.hidden === null) {
@@ -176,4 +228,73 @@ function cloneEntry<T extends AnyEntry>(entry: T): T {
     ...entry,
     bullets: entry.bullets.map((b: Bullet) => ({ ...b })),
   }
+}
+
+/** Display title of any entry shape. */
+function entryTitle(e: AnyEntry): string {
+  if ('institution' in e) return e.institution
+  if ('title' in e) return e.title
+  return e.employer
+}
+
+/** Secondary line (degree / organization / role) of any entry shape. */
+function entrySubtitle(e: AnyEntry): string {
+  if ('degree' in e) return e.degree
+  if ('organization' in e) return e.organization ?? e.role ?? ''
+  return e.role
+}
+
+/**
+ * Recast an entry into another section's shape, preserving what carries over
+ * (id, bullets, hidden, origin, dates) and mapping the title/subtitle sensibly.
+ * This is what makes cross-section moves lossless where it matters — bullets
+ * and identity survive; section-specific fields (GPA, tech stack) reset.
+ */
+function transferEntry(
+  e: AnyEntry,
+  to: ResumeSectionKey,
+  kind: 'experience' | 'project' | null,
+): AnyEntry {
+  const base = {
+    id: e.id,
+    start_date: e.start_date,
+    end_date: e.end_date,
+    bullets: e.bullets.map((b) => ({ ...b })),
+    hidden: e.hidden,
+    origin: e.origin,
+  }
+  const title = entryTitle(e)
+  const subtitle = entrySubtitle(e)
+
+  if (to === 'education') {
+    const edu: EducationEntry = {
+      ...base,
+      institution: title,
+      degree: subtitle,
+      field_of_study: null,
+      gpa: null,
+      location: null,
+      coursework: [],
+    }
+    return edu
+  }
+  if (to === 'technical_projects_and_experience') {
+    const tech: TechnicalEntry = {
+      ...base,
+      kind: kind ?? 'experience',
+      title,
+      organization: subtitle || null,
+      role: null,
+      tech_stack: [],
+      link: null,
+    }
+    return tech
+  }
+  const work: WorkEntry = {
+    ...base,
+    employer: title,
+    role: subtitle,
+    location: null,
+  }
+  return work
 }

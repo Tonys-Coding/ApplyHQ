@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react'
-import { Download, FileUp, Loader2, Minimize2, MoreHorizontal, RotateCcw, Type } from 'lucide-react'
+import { Download, FileDown, FileUp, Loader2, Minimize2, MoreHorizontal, RotateCcw, Type } from 'lucide-react'
 import { toast } from 'sonner'
 import { useResumeStore } from '@/stores/useResumeStore'
 import { FONT_STACKS, fontChoiceOf, type FontChoice } from '@/types/domain'
-import { downloadResumePdf } from '@/features/resume/lib/exportPdf'
+import { downloadVectorResumePdf } from '@/features/resume/lib/exportVectorPdf'
+import { downloadOriginalPdf } from '@/features/resume/lib/downloadOriginal'
 import { computeFitToOnePage } from '@/features/resume/lib/fitToPage'
 import { useIngestFile } from '@/features/resume/lib/useIngestFile'
 import { Button } from '@/components/ui/button'
@@ -39,6 +40,7 @@ export function FormatToolbar() {
   const revert = useResumeStore((s) => s.revertToOriginal)
   const resumeLoaded = useResumeStore((s) => !!s.resume)
   const hasOriginal = useResumeStore((s) => !!s.format.original)
+  const pdfPath = useResumeStore((s) => s.resume?.pdf_storage_path ?? null)
 
   const { ingest, busy: ingesting } = useIngestFile()
   const fileRef = useRef<HTMLInputElement>(null)
@@ -59,10 +61,10 @@ export function FormatToolbar() {
     )
   }
 
-  /** Save to the account AND download a PDF straight to Downloads. */
+  /** Save to the account AND download a vector PDF straight to Downloads. */
   async function saveAndDownload() {
-    const node = resumeNode()
-    if (!node) return
+    const resume = useResumeStore.getState().resume
+    if (!resume) return
     setDownloading(true)
     await save()
     if (useResumeStore.getState().error) {
@@ -72,14 +74,28 @@ export function FormatToolbar() {
     }
     try {
       const name = format.header.full_name?.trim() || 'resume'
-      await downloadResumePdf(node, `${name} — Resume.pdf`)
-      toast.success('Saved & downloaded', { description: 'Check your Downloads folder.' })
+      downloadVectorResumePdf(resume, format, `${name} — Resume.pdf`)
+      toast.success('Saved & downloaded', {
+        description: 'Vector PDF in your Downloads folder.',
+      })
     } catch (err) {
       toast.error('Download failed', {
         description: err instanceof Error ? err.message : 'Could not generate the PDF.',
       })
     } finally {
       setDownloading(false)
+    }
+  }
+
+  async function onDownloadOriginal() {
+    if (!pdfPath) return
+    try {
+      const name = format.header.full_name?.trim() || 'resume'
+      await downloadOriginalPdf(pdfPath, `${name} — Original.pdf`)
+    } catch (err) {
+      toast.error('Could not download original', {
+        description: err instanceof Error ? err.message : 'The original file is unavailable.',
+      })
     }
   }
 
@@ -180,6 +196,10 @@ export function FormatToolbar() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onDownloadOriginal} disabled={!pdfPath}>
+              <FileDown className="size-4" />
+              Download original PDF
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => fileRef.current?.click()}>
               <FileUp className="size-4" />
               Upload new base resume

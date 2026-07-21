@@ -1,5 +1,6 @@
 import { apiFetch } from '@/lib/api'
-import { supabase } from '@/lib/supabase'
+import { supabase, RESUME_BUCKET, resumePdfPath } from '@/lib/supabase'
+import { resolveFontStack } from '@/features/resume/lib/fonts'
 import type { ResumeInsert } from '@/types/database'
 import {
   DEFAULT_FORMAT_SETTINGS,
@@ -29,7 +30,7 @@ interface ParseResponse {
   chars: number
   lines: string[]
   text: string
-  fontFamily: string
+  fontName: string
 }
 
 /** Mirrors server/schemas/resume.ts ParsedResumeSchema — drafts carry no ids. */
@@ -193,7 +194,9 @@ export async function ingestResume(
 
   const format: FormatSettings = {
     ...DEFAULT_FORMAT_SETTINGS,
-    font_family: parsed.fontFamily || DEFAULT_FORMAT_SETTINGS.font_family,
+    // Faithful stack: the real font name first (used if installed), then the
+    // bundled metric-compatible clone, then the generic.
+    font_family: resolveFontStack(parsed.fontName),
     header,
     // Snapshot the freshly-parsed resume so "Revert to original" can restore it
     // no matter how much the user or the AI later changes.
@@ -234,6 +237,21 @@ export async function ingestResume(
     const { data, error } = await supabase.from('resumes').insert(payload).select('id').single()
     if (error) throw new Error(error.message)
     resumeId = data.id
+  }
+
+  // Store the pristine original PDF so the user can always re-download the exact
+  // file they uploaded, no matter how much they edit. Best-effort — upsert to
+  // overwrite on re-upload; a storage hiccup must not fail the whole ingest.
+  try {
+    const path = resumePdfPath(auth.user.id, resumeId, file.name)
+    const { error: upErr } = await supabase.storage
+      .from(RESUME_BUCKET)
+      .upload(path, file, { upsert: true, contentType: 'application/pdf' })
+    if (!upErr) {
+      await supabase.from('resumes').update({ pdf_storage_path: path }).eq('id', resumeId)
+    }
+  } catch {
+    /* original-PDF storage is a bonus, not required */
   }
 
   // 4. Opportunistically fill the profile from parsed contact info. Best-effort:

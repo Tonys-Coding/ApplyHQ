@@ -13,8 +13,8 @@ export interface ParseResumeResponse {
   lines: string[]
   /** lines joined with \n. This is what goes to the model. */
   text: string
-  /** CSS font stack matching the PDF's dominant font. */
-  fontFamily: string
+  /** The PDF's dominant font name (e.g. "Calibri") or a generic. */
+  fontName: string
 }
 
 /**
@@ -105,7 +105,7 @@ export async function parseResume(req: Request): Promise<Response> {
     chars: extracted.chars,
     lines: extracted.lines,
     text: extracted.text,
-    fontFamily: extracted.fontFamily,
+    fontName: extracted.fontName,
   }
 
   return Response.json(payload)

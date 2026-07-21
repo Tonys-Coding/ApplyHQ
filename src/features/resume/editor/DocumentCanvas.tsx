@@ -2,6 +2,9 @@ import { EyeOff, Plus } from 'lucide-react'
 import { useResumeStore } from '@/stores/useResumeStore'
 import { ResumeUpload } from '@/components/ResumeUpload'
 import { Editable } from './Editable'
+// Side-effect import: bundles the metric-compatible resume fonts so the canvas
+// renders the uploaded resume's font, never the app UI font.
+import '@/features/resume/lib/fonts'
 import { cn } from '@/lib/utils'
 import type {
   Bullet,

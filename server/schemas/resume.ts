@@ -150,8 +150,12 @@ export const ResumeOperation = z.object({
     'set_bullet_hidden',
     'set_entry_hidden',
     'set_skills',
+    'set_entry_kind',
+    'move_entry',
   ]),
-  section: ResumeSectionEnum.nullable().describe('null only for set_skills.'),
+  section: ResumeSectionEnum.nullable().describe(
+    "The entry's CURRENT section. null only for set_skills.",
+  ),
   entry_id: z.string().nullable().describe('Must be an id present in the input. Never invent one.'),
   bullet_id: z.string().nullable().describe('Required for bullet ops; null otherwise.'),
   text: z.string().nullable().describe('New bullet text. Required for rewrite_bullet.'),
@@ -164,6 +168,18 @@ export const ResumeOperation = z.object({
         'existing GROUPED-LINE format — one element per category line, e.g. ' +
         '"Languages: Python, C". Never explode into one-skill-per-element and ' +
         'never drop the category labels.',
+    ),
+  to_section: ResumeSectionEnum.nullable().describe(
+    'Destination section for move_entry (e.g. move an entry from ' +
+      'technical_projects_and_experience to other_work_history). null otherwise.',
+  ),
+  entry_kind: z
+    .enum(['experience', 'project'])
+    .nullable()
+    .describe(
+      'For set_entry_kind: flip a technical entry between the Experience and ' +
+        'Projects sections. Also set this when move_entry targets ' +
+        'technical_projects_and_experience. null otherwise.',
     ),
   rationale: z
     .string()

@@ -108,11 +108,11 @@ export interface FormatSettings {
   original?: ResumeSnapshot
 }
 
-/** The three font stacks the resume can use, matched to the detected PDF font. */
+/** The three font stacks for the toolbar override — bundled metric-clone fonts. */
 export const FONT_STACKS = {
-  serif: 'Georgia, "Times New Roman", Cambria, serif',
-  sans: '"Helvetica Neue", Arial, "Segoe UI", sans-serif',
-  mono: 'ui-monospace, "Courier New", monospace',
+  serif: '"Tinos", "Times New Roman", Times, serif',
+  sans: '"Arimo", Arial, Helvetica, sans-serif',
+  mono: '"Cousine", "Courier New", monospace',
 } as const
 
 export type FontChoice = keyof typeof FONT_STACKS
@@ -121,8 +121,8 @@ export const DEFAULT_FONT_FAMILY = FONT_STACKS.serif
 
 /** Best-effort reverse lookup: which choice does a stored stack correspond to. */
 export function fontChoiceOf(stack: string): FontChoice {
-  if (stack.includes('mono') || stack.includes('Courier')) return 'mono'
-  if (stack.includes('Helvetica') || stack.includes('Arial') || stack.includes('sans')) return 'sans'
+  if (/mono|courier|cousine/i.test(stack)) return 'mono'
+  if (/arimo|carlito|helvet|arial|calibri|sans/i.test(stack)) return 'sans'
   return 'serif'
 }
 
@@ -209,6 +209,8 @@ export type ResumeOpKind =
   | 'set_bullet_hidden'
   | 'set_entry_hidden'
   | 'set_skills'
+  | 'set_entry_kind'
+  | 'move_entry'
 
 export interface ResumeOperation {
   op: ResumeOpKind
@@ -218,6 +220,10 @@ export interface ResumeOperation {
   text: string | null
   hidden: boolean | null
   skills: string[] | null
+  /** Target section for move_entry. */
+  to_section: ResumeSectionKey | null
+  /** Experience vs project, for set_entry_kind (and move into technical). */
+  entry_kind: 'experience' | 'project' | null
   /** One sentence, shown verbatim in the change log. */
   rationale: string
 }

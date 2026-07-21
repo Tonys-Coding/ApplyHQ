@@ -21,28 +21,24 @@ export interface ExtractedPdf {
   /** lines joined with \n — the form handed to the model. */
   text: string
   chars: number
-  /** CSS font stack matching the PDF's dominant body font (serif vs sans). */
-  fontFamily: string
+  /**
+   * The PDF's dominant font NAME as best recovered — e.g. "Calibri", "Times",
+   * "ArialMT", or a generic like "sans-serif". The client resolves this to a
+   * metric-compatible web-font stack so the editor matches the original.
+   */
+  fontName: string
 }
 
 /**
- * Serif vs sans is the fidelity we can reliably recover from a PDF: pdf.js
- * exposes the font family per glyph run, but often only generically
- * ("serif"/"sans-serif") or as an embedded/subset name. We classify the
- * dominant one and return a matching web stack so the on-screen resume reads
- * like the original instead of snapping to the app's sans body font.
+ * Embedded PDF fonts are usually subsetted and tagged with a six-letter prefix
+ * like "BCDEEE+Calibri". Strip it to recover the real family name, and drop the
+ * common style suffixes so "ArialMT" -> "Arial", "Calibri-Bold" -> "Calibri".
  */
-const SERIF_STACK = 'Georgia, "Times New Roman", Cambria, serif'
-const SANS_STACK = '"Helvetica Neue", Arial, "Segoe UI", sans-serif'
-const MONO_STACK = 'ui-monospace, "Courier New", monospace'
-
-function classifyFont(family: string): string {
-  const f = family.toLowerCase()
-  if (/mono|consol|courier/.test(f)) return MONO_STACK
-  if (/sans|arial|helvet|calibri|verdana|tahoma|segoe|roboto|open sans/.test(f)) return SANS_STACK
-  if (/serif|times|georgia|garamond|cambria|minion|book antiqua|palatino/.test(f)) return SERIF_STACK
-  // Resumes default to serif far more often than sans.
-  return SERIF_STACK
+function cleanFontName(raw: string): string {
+  let n = raw.replace(/^[A-Z]{6}\+/, '').trim()
+  n = n.replace(/[-,_](Regular|Bold|Italic|Oblique|Medium|Light|Book|Roman|MT|PS|PSMT)\b/gi, '')
+  n = n.replace(/(MT|PSMT)$/i, '')
+  return n.trim() || raw
 }
 
 /**
@@ -62,14 +58,27 @@ export async function extractPdfText(bytes: Uint8Array): Promise<ExtractedPdf> {
   const pdf = await getDocumentProxy(bytes)
   const lines: string[] = []
 
-  // Character-weighted tally of font families, so the *body* font wins over a
-  // handful of large heading glyphs.
+  // Character-weighted tally, so the *body* font wins over a few big heading
+  // glyphs. Keyed by "realName|generic" recovered from the loaded font object.
   const fontWeight = new Map<string, number>()
 
   for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
     const page = await pdf.getPage(pageNum)
+    // Loads the embedded fonts into commonObjs so we can read their real names.
+    // No canvas needed — this only builds the operator list.
+    await page.getOperatorList().catch(() => {})
     const content = await page.getTextContent()
-    const styles = content.styles as Record<string, { fontFamily?: string }> | undefined
+
+    const nameFor = (fontId: string): string => {
+      try {
+        const fo = page.commonObjs.get(fontId) as { name?: string; fallbackName?: string } | null
+        const real = fo?.name ? cleanFontName(fo.name) : ''
+        const generic = fo?.fallbackName || 'serif'
+        return `${real}|${generic}`
+      } catch {
+        return '|serif'
+      }
+    }
 
     const rows = new Map<number, Run[]>()
 
@@ -86,9 +95,11 @@ export async function extractPdfText(bytes: Uint8Array): Promise<ExtractedPdf> {
       const y = item.transform[5] as number
       const key = Math.round(y * BASELINE_TOLERANCE) / BASELINE_TOLERANCE
 
-      const fam = styles?.[(item as { fontName?: string }).fontName ?? '']?.fontFamily
-      if (fam && item.str.trim()) {
-        fontWeight.set(fam, (fontWeight.get(fam) ?? 0) + item.str.trim().length)
+      const fontId = (item as { fontName?: string }).fontName
+      const weight = item.str.trim().length
+      if (fontId && weight) {
+        const k = nameFor(fontId)
+        fontWeight.set(k, (fontWeight.get(k) ?? 0) + weight)
       }
 
       const row = rows.get(key)
@@ -112,7 +123,10 @@ export async function extractPdfText(bytes: Uint8Array): Promise<ExtractedPdf> {
     lines.push(...pageLines)
   }
 
-  const dominant = [...fontWeight.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'serif'
+  const dominant = [...fontWeight.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '|serif'
+  const [realName, generic] = dominant.split('|')
+  // Prefer the real family name; fall back to the generic (serif/sans/mono).
+  const fontName = realName || generic || 'serif'
 
   const text = lines.join('\n')
   return {
@@ -120,6 +134,6 @@ export async function extractPdfText(bytes: Uint8Array): Promise<ExtractedPdf> {
     lines,
     text,
     chars: text.length,
-    fontFamily: classifyFont(dominant),
+    fontName,
   }
 }
