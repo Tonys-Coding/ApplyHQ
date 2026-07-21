@@ -235,18 +235,39 @@ You convert raw resume text extracted from a PDF into structured data.
 You are TRANSCRIBING, not editing. This is the one task where improving the
 text would be a bug: the user must first see their resume as it actually is.
 
-- Copy bullet text VERBATIM. Do not fix grammar, tighten wording, or add
-  metrics.
-- Preserve dates, GPA, and titles exactly as printed.
+GENERAL
+- Copy bullet text VERBATIM. Do not fix grammar, tighten wording, or add metrics.
+- Preserve dates, GPA, titles, and company names exactly as printed.
 - Never invent a field. Absent -> null, or [] for a list.
-- Sort each entry into exactly one section:
-    technical_projects_and_experience -> software/engineering internships,
-      projects, research, technical club work.
-    other_work_history -> everything else: food service, retail, warehouse,
-      lifeguarding, tutoring, campus jobs.
-  When genuinely torn (e.g. "IT Help Desk"), prefer technical.
-- Extraction is line-based and may have joined or split things oddly. Use
-  judgement to reassemble, but never to embellish.
+- Extraction is line-based and may have joined or split things oddly. Reassemble
+  with judgement, but never embellish.
+
+HEADER (top of the resume)
+- full_name: the person's name. headline: a tagline under it, if present.
+- contact_lines: the contact block EXACTLY as printed, one element per visual
+  line, separators and order preserved. Also fill email/phone/location/
+  github_url/linkedin_url/portfolio_url from those same lines when present.
+- The header is NOT a section entry. Never turn the name or contact info into an
+  education/experience/skills item.
+
+SECTIONS — respect the resume's own headings. Do not merge distinct sections.
+- education -> schools, degrees, coursework.
+- technical_projects_and_experience -> BOTH technical experience and projects,
+  but tag each entry's \`kind\`:
+    * kind="experience": a role at a company/lab/org. Has an employer, usually a
+      job title and dates. (Internships, research assistant, SWE roles.)
+    * kind="project": personal/academic/club/hackathon work. NO employer.
+  Getting \`kind\` right is critical — the UI renders Experience and Projects as
+  separate sections, so a mis-tagged project shows up under Experience.
+- other_work_history -> non-technical jobs: food service, retail, warehouse,
+  lifeguarding, tutoring, campus jobs. Never discard these.
+  When genuinely torn (e.g. "IT Help Desk"), prefer technical experience.
+
+SKILLS — preserve the printed grouping.
+- Return skills_and_keywords as the skill lines AS PRINTED, one element per line,
+  keeping category labels: e.g. "Languages: Python, C". Do NOT explode into
+  individual skills and do NOT drop the labels. This is how the on-screen skills
+  section keeps its original layout.
 `.trim()
 
 export function parseUserPrompt(resumeText: string): string {

@@ -1,12 +1,14 @@
 import { apiFetch } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
 import type { ResumeInsert } from '@/types/database'
-import type {
-  Bullet,
-  EducationEntry,
-  Origin,
-  TechnicalEntry,
-  WorkEntry,
+import {
+  DEFAULT_FORMAT_SETTINGS,
+  type Bullet,
+  type EducationEntry,
+  type FormatSettings,
+  type Origin,
+  type TechnicalEntry,
+  type WorkEntry,
 } from '@/types/domain'
 
 /**
@@ -27,6 +29,7 @@ interface ParseResponse {
   chars: number
   lines: string[]
   text: string
+  fontFamily: string
 }
 
 /** Mirrors server/schemas/resume.ts ParsedResumeSchema — drafts carry no ids. */
@@ -65,6 +68,8 @@ interface WorkDraft {
 }
 interface ParsedResume {
   full_name: string | null
+  headline: string | null
+  contact_lines: string[]
   email: string | null
   phone: string | null
   location: string | null
@@ -74,6 +79,7 @@ interface ParsedResume {
   education: EducationDraft[]
   technical_projects_and_experience: TechnicalDraft[]
   other_work_history: WorkDraft[]
+  /** Grouped skill lines as printed, e.g. "Languages: Python, C". */
   skills_and_keywords: string[]
 }
 
@@ -152,7 +158,7 @@ export async function ingestResume(
   const { data: auth } = await supabase.auth.getUser()
   if (!auth.user) throw new Error('You must be signed in to upload a resume.')
 
-  // 1. Extract text (deterministic, server-side, magic-byte checked).
+  // 1. Extract text + detect the font (deterministic, server-side).
   onStage('extracting')
   const form = new FormData()
   form.append('file', file)
@@ -169,7 +175,21 @@ export async function ingestResume(
   })
 
   // 3. Save as the master resume.
+  //
+  // version_name stays the VERSION label ("Master Resume"); the person's actual
+  // name + contact live in format_settings.header, preserved from the PDF and
+  // rendered as the document heading. The two were being conflated before.
   onStage('saving')
+  const format: FormatSettings = {
+    ...DEFAULT_FORMAT_SETTINGS,
+    font_family: parsed.fontFamily || DEFAULT_FORMAT_SETTINGS.font_family,
+    header: {
+      full_name: structured.full_name ?? '',
+      headline: structured.headline ?? null,
+      contact_lines: structured.contact_lines ?? [],
+    },
+  }
+
   const payload: ResumeInsert = {
     user_id: auth.user.id,
     version_name: 'Master Resume',
@@ -180,6 +200,7 @@ export async function ingestResume(
     ),
     other_work_history: toWork(structured.other_work_history ?? []),
     skills_and_keywords: structured.skills_and_keywords ?? [],
+    format_settings: format,
   }
 
   // Exactly one master is allowed per user (partial unique index). Update the

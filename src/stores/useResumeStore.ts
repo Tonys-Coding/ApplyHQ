@@ -7,6 +7,7 @@ import {
   type ChangeLogEntry,
   type FormatSettings,
   type ResumeEditPlan,
+  type ResumeHeader,
   type ResumeSectionKey,
   type Strictness,
 } from '@/types/domain'
@@ -39,6 +40,19 @@ interface ResumeState {
   toggleBullet: (section: ResumeSectionKey, nodeId: string, bulletId: string) => void
   editBullet: (section: ResumeSectionKey, nodeId: string, bulletId: string, text: string) => void
 
+  /** Edit the preserved header (name / headline / contact lines). */
+  updateHeader: (patch: Partial<ResumeHeader>) => void
+  /** Merge a partial into a section entry — any scalar or list field. */
+  updateEntry: (
+    section: ResumeSectionKey,
+    nodeId: string,
+    patch: Record<string, unknown>,
+  ) => void
+  /** Replace the grouped skill lines. */
+  updateSkills: (lines: string[]) => void
+  /** Append a new empty, user-authored bullet to an entry. */
+  addBullet: (section: ResumeSectionKey, nodeId: string) => void
+
   /** Current resume as the bare sections the edit-plan engine needs. */
   sections: () => ResumeSections | null
   /** Apply a model edit plan to live state, logging every change. */
@@ -51,6 +65,19 @@ interface ResumeState {
 }
 
 const nowIso = () => new Date().toISOString()
+
+/**
+ * Fills in any fields a stored format_settings predates (font_family, header),
+ * so resumes saved before this shape existed still load with a valid header and
+ * font instead of undefined.
+ */
+function mergeFormat(stored: Partial<FormatSettings> | null | undefined): FormatSettings {
+  return {
+    ...DEFAULT_FORMAT_SETTINGS,
+    ...stored,
+    header: { ...DEFAULT_FORMAT_SETTINGS.header, ...stored?.header },
+  }
+}
 
 export const useResumeStore = create<ResumeState>((set, get) => ({
   resume: null,
@@ -69,7 +96,7 @@ export const useResumeStore = create<ResumeState>((set, get) => ({
       set({ loading: false, error: error.message })
       return
     }
-    set({ resume: data, format: data.format_settings ?? DEFAULT_FORMAT_SETTINGS, loading: false })
+    set({ resume: data, format: mergeFormat(data.format_settings), loading: false })
   },
 
   loadMaster: async () => {
@@ -86,7 +113,7 @@ export const useResumeStore = create<ResumeState>((set, get) => ({
     }
     set({
       resume: data,
-      format: data?.format_settings ?? DEFAULT_FORMAT_SETTINGS,
+      format: mergeFormat(data?.format_settings),
       loading: false,
     })
   },
@@ -228,6 +255,44 @@ export const useResumeStore = create<ResumeState>((set, get) => ({
       summary: 'Edited a bullet',
       before: before.text,
       after: text,
+    })
+  },
+
+  updateHeader: (patch) => {
+    const format = get().format
+    set({ format: { ...format, header: { ...format.header, ...patch } } })
+  },
+
+  updateEntry: (section, nodeId, patch) => {
+    const resume = get().resume
+    if (!resume) return
+    const nodes = resume[section] as Array<{ id: string }>
+    set({
+      resume: {
+        ...resume,
+        [section]: nodes.map((n) => (n.id === nodeId ? { ...n, ...patch } : n)),
+      },
+    })
+  },
+
+  updateSkills: (lines) => {
+    const resume = get().resume
+    if (!resume) return
+    set({ resume: { ...resume, skills_and_keywords: lines } })
+  },
+
+  addBullet: (section, nodeId) => {
+    const resume = get().resume
+    if (!resume) return
+    const nodes = resume[section] as Array<{ id: string; bullets: Bullet[] }>
+    const fresh: Bullet = { id: crypto.randomUUID(), text: '', hidden: false, origin: 'user' }
+    set({
+      resume: {
+        ...resume,
+        [section]: nodes.map((n) =>
+          n.id === nodeId ? { ...n, bullets: [...n.bullets, fresh] } : n,
+        ),
+      },
     })
   },
 

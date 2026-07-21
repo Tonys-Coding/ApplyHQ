@@ -74,7 +74,22 @@ const WorkDraft = z.object({
 })
 
 export const ParsedResumeSchema = z.object({
-  full_name: z.string().nullable(),
+  // The top block, preserved as printed so the resume's own identity survives.
+  full_name: z.string().nullable().describe('The person\'s name from the top of the resume.'),
+  headline: z
+    .string()
+    .nullable()
+    .describe('A title/tagline printed under the name, if any (e.g. "Software Engineer"). Else null.'),
+  contact_lines: z
+    .array(z.string())
+    .describe(
+      'The contact/header lines EXACTLY as printed, one array element per visual ' +
+        'line — e.g. ["me@email.com | (555) 123-4567 | Dallas, TX", ' +
+        '"github.com/me | linkedin.com/in/me"]. Preserve separators and order. ' +
+        'Do not invent, reorder, or split fields onto their own lines.',
+    ),
+
+  // Structured contact, for the profile. Derived from the same header.
   email: z.string().nullable(),
   phone: z.string().nullable(),
   location: z.string().nullable(),
@@ -85,14 +100,29 @@ export const ParsedResumeSchema = z.object({
   education: z.array(EducationDraft),
   technical_projects_and_experience: z
     .array(TechnicalDraft)
-    .describe('Software/engineering work: internships, projects, research.'),
+    .describe(
+      'Software/engineering EXPERIENCE and PROJECTS. Set `kind` precisely: ' +
+        '"experience" for a role held at a company/lab/organization (has an ' +
+        'employer and usually a job title); "project" for personal, academic, ' +
+        'club, or hackathon work (has no employer). This flag is what keeps the ' +
+        'Experience and Projects sections from bleeding into each other.',
+    ),
   other_work_history: z
     .array(WorkDraft)
     .describe(
       'Non-technical employment — food service, retail, warehouse, tutoring. ' +
         'Never discard these; they are evidence of work ethic.',
     ),
-  skills_and_keywords: z.array(z.string()),
+  skills_and_keywords: z
+    .array(z.string())
+    .describe(
+      'The Skills section preserved AS GROUPED LINES, one array element per ' +
+        'printed line, category label included — e.g. ' +
+        '["Languages: Python, C, Java", "Frameworks: React, Node.js", ' +
+        '"Tools: Git, Docker"]. Do NOT flatten into individual skills and do ' +
+        'NOT drop the "Languages:"/"Tools:" labels. If the resume lists skills ' +
+        'as one comma-separated line, return that single line.',
+    ),
 })
 
 export type ParsedResume = z.infer<typeof ParsedResumeSchema>

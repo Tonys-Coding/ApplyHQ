@@ -192,3 +192,37 @@
 @utility kinetic-gradient {
   background: linear-gradient(135deg, #a40217 0%, #68000a 100%);
 }
+
+/* Print / "Download PDF": isolate the resume page, drop chrome and edit
+   affordances, and let the page's own padding become the print margin. */
+@media print {
+  body {
+    background: white;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .resume-print,
+  .resume-print * {
+    visibility: visible;
+  }
+  .resume-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    box-shadow: none !important;
+    width: 100% !important;
+    min-height: auto !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  /* Placeholders are editing affordances, not content — never print them. */
+  .resume-print [data-placeholder]:empty::before {
+    content: "" !important;
+  }
+  @page {
+    size: letter;
+    margin: 0;
+  }
+}

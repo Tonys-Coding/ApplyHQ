@@ -1,32 +1,49 @@
-import { EyeOff } from 'lucide-react'
+import { EyeOff, Plus } from 'lucide-react'
 import { useResumeStore } from '@/stores/useResumeStore'
 import { ResumeUpload } from '@/components/ResumeUpload'
+import { Editable } from './Editable'
 import { cn } from '@/lib/utils'
-import {
-  SECTION_LABELS,
-  nodeTitle,
-  type Bullet,
-  type ResumeNode,
-  type ResumeSectionKey,
+import type {
+  Bullet,
+  EducationEntry,
+  ResumeNode,
+  ResumeSectionKey,
+  TechnicalEntry,
+  WorkEntry,
 } from '@/types/domain'
 
 /**
- * The live resume page.
+ * The live, fully-editable resume page.
  *
- * Renders US Letter at true dimensions (8.5in x 11in) and lets the browser's
- * own layout engine do the work. That matters for "Fit to One Page": the only
- * honest way to know whether the content fits is to lay it out at real size and
- * measure, not to estimate from character counts.
+ * Rendered at true US-Letter size (8.5x11in) so "Fit to One Page" can measure
+ * honestly, in the PDF's own font (format.font_family) rather than the app's
+ * sans body font, and split into the resume's real sections — Experience and
+ * Projects are separated by each technical entry's `kind` so projects stop
+ * bleeding into experience.
  *
- * Hidden nodes stay mounted but dimmed rather than unmounting, so toggling
- * something back doesn't reflow the page out from under you.
+ * Every field is an <Editable>: header, titles, dates, GPA, coursework, tech,
+ * bullets, skills. Hidden nodes dim rather than unmount, so a toggle back
+ * doesn't reflow the page under you.
  */
 
-const SECTIONS: ResumeSectionKey[] = [
-  'education',
-  'technical_projects_and_experience',
-  'other_work_history',
-]
+const splitList = (v: string) =>
+  v
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+
+function HideButton({ hidden, onToggle, label }: { hidden: boolean; onToggle: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={hidden ? `Show ${label}` : `Hide ${label}`}
+      className="no-print opacity-0 transition-opacity group-hover/node:opacity-100 group-hover/bullet:opacity-100"
+    >
+      <EyeOff className="size-3 text-neutral-400 hover:text-neutral-700" />
+    </button>
+  )
+}
 
 function BulletRow({
   bullet,
@@ -38,70 +55,54 @@ function BulletRow({
   onToggle: () => void
 }) {
   return (
-    <li
-      className={cn(
-        'group/bullet relative flex gap-2 transition-opacity',
-        bullet.hidden && 'opacity-25',
-      )}
-    >
+    <li className={cn('group/bullet relative flex gap-2 transition-opacity', bullet.hidden && 'opacity-25')}>
       <span aria-hidden className="select-none">
         •
       </span>
-      <span
-        contentEditable
-        suppressContentEditableWarning
-        spellCheck={false}
-        // Commit on blur, not on every keystroke: re-rendering a contentEditable
-        // from state on each input event fights the caret and it jumps to the end.
-        onBlur={(e) => onEdit(e.currentTarget.textContent ?? '')}
-        className="flex-1 rounded-sm outline-none focus:bg-accent/40"
-      >
-        {bullet.text}
+      <Editable value={bullet.text} onCommit={onEdit} className="flex-1" placeholder="Bullet…" />
+      <span className="absolute -left-6">
+        <HideButton hidden={bullet.hidden} onToggle={onToggle} label="bullet" />
       </span>
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-label={bullet.hidden ? 'Show bullet' : 'Hide bullet'}
-        className="absolute -left-6 opacity-0 transition-opacity group-hover/bullet:opacity-100"
-      >
-        <EyeOff className="size-3 text-muted-foreground hover:text-foreground" />
-      </button>
     </li>
   )
 }
 
-function NodeBlock({ section, node }: { section: ResumeSectionKey; node: ResumeNode }) {
-  const toggleNode = useResumeStore((s) => s.toggleNode)
+function DateRange({
+  section,
+  id,
+  start,
+  end,
+}: {
+  section: ResumeSectionKey
+  id: string
+  start: string | null
+  end: string | null
+}) {
+  const updateEntry = useResumeStore((s) => s.updateEntry)
+  return (
+    <span className="ml-auto shrink-0 pl-2 text-[0.85em] tabular-nums">
+      <Editable
+        value={start ?? ''}
+        placeholder="Start"
+        onCommit={(v) => updateEntry(section, id, { start_date: v || null })}
+      />
+      <span className="px-1">–</span>
+      <Editable
+        value={end ?? ''}
+        placeholder="End"
+        onCommit={(v) => updateEntry(section, id, { end_date: v || null })}
+      />
+    </span>
+  )
+}
+
+function EntryBullets({ section, node }: { section: ResumeSectionKey; node: ResumeNode }) {
   const toggleBullet = useResumeStore((s) => s.toggleBullet)
   const editBullet = useResumeStore((s) => s.editBullet)
-
-  const subtitle =
-    'degree' in node
-      ? [node.degree, node.field_of_study].filter(Boolean).join(', ')
-      : 'organization' in node
-        ? (node.organization ?? node.role ?? '')
-        : node.role
+  const addBullet = useResumeStore((s) => s.addBullet)
 
   return (
-    <div className={cn('group/node mb-2 transition-opacity', node.hidden && 'opacity-25')}>
-      <div className="flex items-baseline gap-2">
-        <span className="font-semibold">{nodeTitle(node)}</span>
-        {subtitle && <span className="text-[0.9em] italic">{subtitle}</span>}
-        <span className="ml-auto text-[0.85em] tabular-nums">
-          {[node.start_date, node.end_date].filter(Boolean).join(' – ')}
-        </span>
-        <button
-          type="button"
-          onClick={() => toggleNode(section, node.id)}
-          aria-label={node.hidden ? 'Show entry' : 'Hide entry'}
-          className="opacity-0 transition-opacity group-hover/node:opacity-100"
-        >
-          <EyeOff className="size-3 text-muted-foreground hover:text-foreground" />
-        </button>
-      </div>
-
-      {'gpa' in node && node.gpa && <div className="text-[0.9em]">GPA: {node.gpa}</div>}
-
+    <>
       {node.bullets.length > 0 && (
         <ul className="mt-0.5 ml-1 space-y-0.5">
           {node.bullets.map((b) => (
@@ -114,7 +115,201 @@ function NodeBlock({ section, node }: { section: ResumeSectionKey; node: ResumeN
           ))}
         </ul>
       )}
+      <button
+        type="button"
+        onClick={() => addBullet(section, node.id)}
+        className="no-print mt-0.5 ml-1 flex items-center gap-1 text-[0.75em] text-neutral-400 opacity-0 transition-opacity hover:text-neutral-700 group-hover/node:opacity-100"
+      >
+        <Plus className="size-3" /> add bullet
+      </button>
+    </>
+  )
+}
+
+function EducationBlock({ node }: { node: EducationEntry }) {
+  const section: ResumeSectionKey = 'education'
+  const toggleNode = useResumeStore((s) => s.toggleNode)
+  const updateEntry = useResumeStore((s) => s.updateEntry)
+  const u = (patch: Record<string, unknown>) => updateEntry(section, node.id, patch)
+
+  return (
+    <div className={cn('group/node mb-2 transition-opacity', node.hidden && 'opacity-25')}>
+      <div className="flex items-baseline gap-2">
+        <Editable value={node.institution} onCommit={(v) => u({ institution: v })} className="font-semibold" placeholder="Institution" />
+        {node.location && (
+          <Editable value={node.location} onCommit={(v) => u({ location: v || null })} className="text-[0.85em]" />
+        )}
+        <DateRange section={section} id={node.id} start={node.start_date} end={node.end_date} />
+        <HideButton hidden={node.hidden} onToggle={() => toggleNode(section, node.id)} label="entry" />
+      </div>
+      <div className="text-[0.9em] italic">
+        <Editable value={node.degree} onCommit={(v) => u({ degree: v })} placeholder="Degree" />
+        {(node.field_of_study || node.degree) && <span>, </span>}
+        <Editable
+          value={node.field_of_study ?? ''}
+          onCommit={(v) => u({ field_of_study: v || null })}
+          placeholder="Field of study"
+        />
+      </div>
+      <div className="text-[0.9em]">
+        GPA:{' '}
+        <Editable value={node.gpa ?? ''} onCommit={(v) => u({ gpa: v || null })} placeholder="—" />
+      </div>
+      {(node.coursework.length > 0 || true) && (
+        <div className="text-[0.9em]">
+          <span className="font-semibold">Coursework: </span>
+          <Editable
+            value={node.coursework.join(', ')}
+            onCommit={(v) => u({ coursework: splitList(v) })}
+            placeholder="Course, Course…"
+          />
+        </div>
+      )}
+      <EntryBullets section={section} node={node} />
     </div>
+  )
+}
+
+function TechnicalBlock({ node }: { node: TechnicalEntry }) {
+  const section: ResumeSectionKey = 'technical_projects_and_experience'
+  const toggleNode = useResumeStore((s) => s.toggleNode)
+  const updateEntry = useResumeStore((s) => s.updateEntry)
+  const u = (patch: Record<string, unknown>) => updateEntry(section, node.id, patch)
+
+  const subtitle = node.organization ?? node.role ?? ''
+
+  return (
+    <div className={cn('group/node mb-2 transition-opacity', node.hidden && 'opacity-25')}>
+      <div className="flex items-baseline gap-2">
+        <Editable value={node.title} onCommit={(v) => u({ title: v })} className="font-semibold" placeholder="Title" />
+        <Editable
+          value={subtitle}
+          onCommit={(v) => u(node.organization !== null ? { organization: v || null } : { role: v || null })}
+          className="text-[0.9em] italic"
+          placeholder="Organization / role"
+        />
+        <DateRange section={section} id={node.id} start={node.start_date} end={node.end_date} />
+        <HideButton hidden={node.hidden} onToggle={() => toggleNode(section, node.id)} label="entry" />
+      </div>
+      {(node.tech_stack.length > 0 || true) && (
+        <div className="text-[0.85em]">
+          <span className="font-semibold">Tech: </span>
+          <Editable
+            value={node.tech_stack.join(', ')}
+            onCommit={(v) => u({ tech_stack: splitList(v) })}
+            placeholder="React, C, Postgres…"
+          />
+        </div>
+      )}
+      <EntryBullets section={section} node={node} />
+    </div>
+  )
+}
+
+function WorkBlock({ node }: { node: WorkEntry }) {
+  const section: ResumeSectionKey = 'other_work_history'
+  const toggleNode = useResumeStore((s) => s.toggleNode)
+  const updateEntry = useResumeStore((s) => s.updateEntry)
+  const u = (patch: Record<string, unknown>) => updateEntry(section, node.id, patch)
+
+  return (
+    <div className={cn('group/node mb-2 transition-opacity', node.hidden && 'opacity-25')}>
+      <div className="flex items-baseline gap-2">
+        <Editable value={node.employer} onCommit={(v) => u({ employer: v })} className="font-semibold" placeholder="Employer" />
+        <Editable value={node.role} onCommit={(v) => u({ role: v })} className="text-[0.9em] italic" placeholder="Role" />
+        {node.location && (
+          <Editable value={node.location} onCommit={(v) => u({ location: v || null })} className="text-[0.85em]" />
+        )}
+        <DateRange section={section} id={node.id} start={node.start_date} end={node.end_date} />
+        <HideButton hidden={node.hidden} onToggle={() => toggleNode(section, node.id)} label="entry" />
+      </div>
+      <EntryBullets section={section} node={node} />
+    </div>
+  )
+}
+
+function SectionHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="mb-1 border-b border-black pb-0.5 text-[1.05em] font-bold uppercase tracking-wider">
+      {children}
+    </h2>
+  )
+}
+
+function ResumeHeaderBlock() {
+  const header = useResumeStore((s) => s.format.header)
+  const updateHeader = useResumeStore((s) => s.updateHeader)
+
+  const setLine = (i: number, v: string) => {
+    const lines = [...header.contact_lines]
+    if (v.trim()) lines[i] = v
+    else lines.splice(i, 1)
+    updateHeader({ contact_lines: lines })
+  }
+
+  return (
+    <header className="group/node mb-3 text-center">
+      <Editable
+        as="div"
+        value={header.full_name}
+        onCommit={(v) => updateHeader({ full_name: v })}
+        placeholder="Your Name"
+        className="text-[1.7em] font-bold tracking-tight"
+      />
+      {(header.headline || header.full_name) && (
+        <Editable
+          as="div"
+          value={header.headline ?? ''}
+          onCommit={(v) => updateHeader({ headline: v || null })}
+          placeholder="Headline (optional)"
+          className="text-[0.95em] italic"
+        />
+      )}
+      <div className="mt-0.5 text-[0.85em]">
+        {header.contact_lines.map((line, i) => (
+          <div key={i}>
+            <Editable value={line} onCommit={(v) => setLine(i, v)} />
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => updateHeader({ contact_lines: [...header.contact_lines, ''] })}
+          className="no-print mx-auto mt-0.5 flex items-center gap-1 text-[0.8em] text-neutral-400 opacity-0 transition-opacity hover:text-neutral-700 group-hover/node:opacity-100"
+        >
+          <Plus className="size-3" /> add contact line
+        </button>
+      </div>
+    </header>
+  )
+}
+
+function SkillsBlock() {
+  const skills = useResumeStore((s) => s.resume?.skills_and_keywords ?? [])
+  const updateSkills = useResumeStore((s) => s.updateSkills)
+
+  const setLine = (i: number, v: string) => {
+    const lines = [...skills]
+    if (v.trim()) lines[i] = v
+    else lines.splice(i, 1)
+    updateSkills(lines)
+  }
+
+  return (
+    <section className="group/node">
+      <SectionHeading>Skills</SectionHeading>
+      {skills.map((line, i) => (
+        <div key={i} className="text-[0.95em]">
+          <Editable value={line} onCommit={(v) => setLine(i, v)} placeholder="Category: skill, skill…" />
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => updateSkills([...skills, ''])}
+        className="no-print mt-0.5 flex items-center gap-1 text-[0.75em] text-neutral-400 opacity-0 transition-opacity hover:text-neutral-700 group-hover/node:opacity-100"
+      >
+        <Plus className="size-3" /> add skill line
+      </button>
+    </section>
   )
 }
 
@@ -122,53 +317,66 @@ export function DocumentCanvas() {
   const resume = useResumeStore((s) => s.resume)
   const format = useResumeStore((s) => s.format)
 
-  if (!resume) {
-    return <ResumeUpload />
-  }
+  if (!resume) return <ResumeUpload />
+
+  const tech = resume.technical_projects_and_experience
+  const experience = tech.filter((n) => n.kind === 'experience')
+  const projects = tech.filter((n) => n.kind === 'project')
 
   return (
     <div className="h-full overflow-auto bg-muted/40 p-8">
       <div
         data-resume-page
-        className="mx-auto bg-white text-black shadow-lg"
+        className="resume-print mx-auto bg-white text-black shadow-lg"
         style={{
           width: '8.5in',
           minHeight: '11in',
           padding: `${format.margin}in`,
           fontSize: `${format.font_size}pt`,
           lineHeight: format.line_height,
-          fontFamily: 'Georgia, "Times New Roman", serif',
+          // The retained font. Never the app's sans body font.
+          fontFamily: format.font_family,
         }}
       >
-        {/* Header */}
-        <header className="mb-3 text-center">
-          <div className="text-[1.6em] font-bold tracking-tight">{resume.version_name}</div>
-        </header>
+        <ResumeHeaderBlock />
 
-        {SECTIONS.map((section) => {
-          const nodes = resume[section] as ResumeNode[]
-          if (!nodes?.length) return null
-
-          return (
-            <section key={section} className="mb-3">
-              <h2 className="mb-1 border-b border-black pb-0.5 text-[1.05em] font-bold uppercase tracking-wider">
-                {SECTION_LABELS[section]}
-              </h2>
-              {nodes.map((node) => (
-                <NodeBlock key={node.id} section={section} node={node} />
-              ))}
-            </section>
-          )
-        })}
-
-        {resume.skills_and_keywords.length > 0 && (
-          <section>
-            <h2 className="mb-1 border-b border-black pb-0.5 text-[1.05em] font-bold uppercase tracking-wider">
-              Skills
-            </h2>
-            <p>{resume.skills_and_keywords.join(' • ')}</p>
+        {resume.education.length > 0 && (
+          <section className="mb-3">
+            <SectionHeading>Education</SectionHeading>
+            {resume.education.map((n) => (
+              <EducationBlock key={n.id} node={n} />
+            ))}
           </section>
         )}
+
+        {experience.length > 0 && (
+          <section className="mb-3">
+            <SectionHeading>Experience</SectionHeading>
+            {experience.map((n) => (
+              <TechnicalBlock key={n.id} node={n} />
+            ))}
+          </section>
+        )}
+
+        {projects.length > 0 && (
+          <section className="mb-3">
+            <SectionHeading>Projects</SectionHeading>
+            {projects.map((n) => (
+              <TechnicalBlock key={n.id} node={n} />
+            ))}
+          </section>
+        )}
+
+        {resume.other_work_history.length > 0 && (
+          <section className="mb-3">
+            <SectionHeading>Work History</SectionHeading>
+            {resume.other_work_history.map((n) => (
+              <WorkBlock key={n.id} node={n} />
+            ))}
+          </section>
+        )}
+
+        <SkillsBlock />
       </div>
     </div>
   )

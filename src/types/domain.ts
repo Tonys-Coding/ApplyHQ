@@ -67,17 +67,57 @@ export interface WorkEntry {
   origin: Origin
 }
 
-/** Editor top-bar state. font_size in pt, margin in inches. */
+/**
+ * The resume's header block — name + contact — preserved from the PDF exactly
+ * as printed, and fully editable. Lives on the document, NOT swapped for the
+ * version label.
+ */
+export interface ResumeHeader {
+  full_name: string
+  headline: string | null
+  /** Contact lines verbatim, one per printed line. */
+  contact_lines: string[]
+}
+
+/**
+ * Document presentation + preserved meta, persisted in the resumes.format_settings
+ * JSONB column. Beyond the editor's font/margin controls it also carries the
+ * retained font family and the header, so both survive round-trips without a
+ * schema change.
+ */
 export interface FormatSettings {
   font_size: number
   line_height: number
   margin: number
+  /** CSS font stack matching the uploaded PDF (serif vs sans). */
+  font_family: string
+  header: ResumeHeader
+}
+
+/** The three font stacks the resume can use, matched to the detected PDF font. */
+export const FONT_STACKS = {
+  serif: 'Georgia, "Times New Roman", Cambria, serif',
+  sans: '"Helvetica Neue", Arial, "Segoe UI", sans-serif',
+  mono: 'ui-monospace, "Courier New", monospace',
+} as const
+
+export type FontChoice = keyof typeof FONT_STACKS
+
+export const DEFAULT_FONT_FAMILY = FONT_STACKS.serif
+
+/** Best-effort reverse lookup: which choice does a stored stack correspond to. */
+export function fontChoiceOf(stack: string): FontChoice {
+  if (stack.includes('mono') || stack.includes('Courier')) return 'mono'
+  if (stack.includes('Helvetica') || stack.includes('Arial') || stack.includes('sans')) return 'sans'
+  return 'serif'
 }
 
 export const DEFAULT_FORMAT_SETTINGS: FormatSettings = {
   font_size: 10.5,
   line_height: 1.15,
   margin: 0.5,
+  font_family: DEFAULT_FONT_FAMILY,
+  header: { full_name: '', headline: null, contact_lines: [] },
 }
 
 /** Mirrors the public.application_stage enum, in board order. */
