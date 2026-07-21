@@ -155,16 +155,15 @@ function EducationBlock({ node }: { node: EducationEntry }) {
         GPA:{' '}
         <Editable value={node.gpa ?? ''} onCommit={(v) => u({ gpa: v || null })} placeholder="—" />
       </div>
-      {(node.coursework.length > 0 || true) && (
-        <div className="text-[0.9em]">
-          <span className="font-semibold">Coursework: </span>
-          <Editable
-            value={node.coursework.join(', ')}
-            onCommit={(v) => u({ coursework: splitList(v) })}
-            placeholder="Course, Course…"
-          />
-        </div>
-      )}
+      {/* Always rendered so empty lists remain editable/discoverable. */}
+      <div className="text-[0.9em]">
+        <span className="font-semibold">Coursework: </span>
+        <Editable
+          value={node.coursework.join(', ')}
+          onCommit={(v) => u({ coursework: splitList(v) })}
+          placeholder="Course, Course…"
+        />
+      </div>
       <EntryBullets section={section} node={node} />
     </div>
   )
@@ -191,16 +190,14 @@ function TechnicalBlock({ node }: { node: TechnicalEntry }) {
         <DateRange section={section} id={node.id} start={node.start_date} end={node.end_date} />
         <HideButton hidden={node.hidden} onToggle={() => toggleNode(section, node.id)} label="entry" />
       </div>
-      {(node.tech_stack.length > 0 || true) && (
-        <div className="text-[0.85em]">
-          <span className="font-semibold">Tech: </span>
-          <Editable
-            value={node.tech_stack.join(', ')}
-            onCommit={(v) => u({ tech_stack: splitList(v) })}
-            placeholder="React, C, Postgres…"
-          />
-        </div>
-      )}
+      <div className="text-[0.85em]">
+        <span className="font-semibold">Tech: </span>
+        <Editable
+          value={node.tech_stack.join(', ')}
+          onCommit={(v) => u({ tech_stack: splitList(v) })}
+          placeholder="React, C, Postgres…"
+        />
+      </div>
       <EntryBullets section={section} node={node} />
     </div>
   )
