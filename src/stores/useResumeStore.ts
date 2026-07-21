@@ -3,11 +3,13 @@ import { supabase } from '@/lib/supabase'
 import type { Resume } from '@/types/database'
 import {
   DEFAULT_FORMAT_SETTINGS,
+  entryLabel,
   type Bullet,
   type ChangeLogEntry,
   type FormatSettings,
   type ResumeEditPlan,
   type ResumeHeader,
+  type ResumeNode,
   type ResumeSectionKey,
   type Strictness,
 } from '@/types/domain'
@@ -52,6 +54,8 @@ interface ResumeState {
   updateSkills: (lines: string[]) => void
   /** Append a new empty, user-authored bullet to an entry. */
   addBullet: (section: ResumeSectionKey, nodeId: string) => void
+  /** Move an entry up/down within its section (relative to same-kind neighbors). */
+  reorderEntry: (section: ResumeSectionKey, nodeId: string, dir: 'up' | 'down') => void
 
   /** Restore the resume to its originally-parsed state, if a snapshot exists. */
   revertToOriginal: () => boolean
@@ -187,7 +191,7 @@ export const useResumeStore = create<ResumeState>((set, get) => ({
     const resume = get().resume
     if (!resume) return
 
-    const nodes = resume[section] as Array<{ id: string; hidden: boolean }>
+    const nodes = resume[section] as ResumeNode[]
     const target = nodes.find((n) => n.id === nodeId)
     if (!target) return
 
@@ -200,7 +204,7 @@ export const useResumeStore = create<ResumeState>((set, get) => ({
     get().logChange({
       kind: 'visibility',
       node_id: nodeId,
-      summary: `${target.hidden ? 'Showed' : 'Hid'} a ${section} entry`,
+      summary: `${target.hidden ? 'Showed' : 'Hid'} ${entryLabel(target)}`,
     })
   },
 
@@ -208,7 +212,9 @@ export const useResumeStore = create<ResumeState>((set, get) => ({
     const resume = get().resume
     if (!resume) return
 
-    const nodes = resume[section] as Array<{ id: string; bullets: Bullet[] }>
+    const nodes = resume[section] as ResumeNode[]
+    const node = nodes.find((n) => n.id === nodeId)
+    const bullet = node?.bullets.find((b) => b.id === bulletId)
     set({
       resume: {
         ...resume,
@@ -224,16 +230,23 @@ export const useResumeStore = create<ResumeState>((set, get) => ({
         ),
       },
     })
-    get().logChange({ kind: 'visibility', node_id: bulletId, summary: 'Toggled a bullet' })
+    if (node) {
+      get().logChange({
+        kind: 'visibility',
+        node_id: bulletId,
+        summary: `${bullet?.hidden ? 'Showed' : 'Hid'} a bullet in ${entryLabel(node)}`,
+      })
+    }
   },
 
   editBullet: (section, nodeId, bulletId, text) => {
     const resume = get().resume
     if (!resume) return
 
-    const nodes = resume[section] as Array<{ id: string; bullets: Bullet[] }>
-    const before = nodes.find((n) => n.id === nodeId)?.bullets.find((b) => b.id === bulletId)
-    if (!before || before.text === text) return
+    const nodes = resume[section] as ResumeNode[]
+    const node = nodes.find((n) => n.id === nodeId)
+    const before = node?.bullets.find((b) => b.id === bulletId)
+    if (!node || !before || before.text === text) return
 
     set({
       resume: {
@@ -255,7 +268,7 @@ export const useResumeStore = create<ResumeState>((set, get) => ({
     get().logChange({
       kind: 'user_edit',
       node_id: bulletId,
-      summary: 'Edited a bullet',
+      summary: `Edited a bullet in ${entryLabel(node)}`,
       before: before.text,
       after: text,
     })
@@ -296,6 +309,35 @@ export const useResumeStore = create<ResumeState>((set, get) => ({
           n.id === nodeId ? { ...n, bullets: [...n.bullets, fresh] } : n,
         ),
       },
+    })
+  },
+
+  reorderEntry: (section, nodeId, dir) => {
+    const resume = get().resume
+    if (!resume) return
+    const nodes = [...(resume[section] as ResumeNode[])]
+    const i = nodes.findIndex((n) => n.id === nodeId)
+    if (i < 0) return
+
+    // For technical entries, reorder relative to the nearest neighbor of the
+    // SAME kind so moving within Experience doesn't jump over the Projects group.
+    const isTech = section === 'technical_projects_and_experience'
+    const kind = isTech && 'kind' in nodes[i] ? (nodes[i] as { kind: string }).kind : null
+    const step = dir === 'up' ? -1 : 1
+    let j = i + step
+    while (isTech && j >= 0 && j < nodes.length && (nodes[j] as { kind?: string }).kind !== kind) {
+      j += step
+    }
+    if (j < 0 || j >= nodes.length) return // already at the edge of its group
+
+    const moved = nodes[i]
+    nodes[i] = nodes[j]
+    nodes[j] = moved
+    set({ resume: { ...resume, [section]: nodes } })
+    get().logChange({
+      kind: 'user_edit',
+      node_id: nodeId,
+      summary: `Moved ${entryLabel(moved)} ${dir}`,
     })
   },
 

@@ -1,4 +1,4 @@
-import { EyeOff, Plus } from 'lucide-react'
+import { ChevronDown, ChevronUp, EyeOff, Plus } from 'lucide-react'
 import { useResumeStore } from '@/stores/useResumeStore'
 import { ResumeUpload } from '@/components/ResumeUpload'
 import { Editable } from './Editable'
@@ -45,6 +45,40 @@ function HideButton({ hidden, onToggle, label }: { hidden: boolean; onToggle: ()
     >
       <EyeOff className="size-3 text-neutral-400 hover:text-neutral-700" />
     </button>
+  )
+}
+
+/** Per-entry controls: move up/down within the section, and hide. */
+function EntryControls({ section, node }: { section: ResumeSectionKey; node: ResumeNode }) {
+  const reorderEntry = useResumeStore((s) => s.reorderEntry)
+  const toggleNode = useResumeStore((s) => s.toggleNode)
+  return (
+    <span className="no-print flex items-center gap-0.5 opacity-0 transition-opacity group-hover/node:opacity-100">
+      <button
+        type="button"
+        onClick={() => reorderEntry(section, node.id, 'up')}
+        aria-label="Move up"
+        className="text-neutral-400 hover:text-neutral-700"
+      >
+        <ChevronUp className="size-3.5" />
+      </button>
+      <button
+        type="button"
+        onClick={() => reorderEntry(section, node.id, 'down')}
+        aria-label="Move down"
+        className="text-neutral-400 hover:text-neutral-700"
+      >
+        <ChevronDown className="size-3.5" />
+      </button>
+      <button
+        type="button"
+        onClick={() => toggleNode(section, node.id)}
+        aria-label={node.hidden ? 'Show entry' : 'Hide entry'}
+        className="text-neutral-400 hover:text-neutral-700"
+      >
+        <EyeOff className="size-3" />
+      </button>
+    </span>
   )
 }
 
@@ -131,7 +165,6 @@ function EntryBullets({ section, node }: { section: ResumeSectionKey; node: Resu
 
 function EducationBlock({ node }: { node: EducationEntry }) {
   const section: ResumeSectionKey = 'education'
-  const toggleNode = useResumeStore((s) => s.toggleNode)
   const updateEntry = useResumeStore((s) => s.updateEntry)
   const u = (patch: Record<string, unknown>) => updateEntry(section, node.id, patch)
 
@@ -143,7 +176,7 @@ function EducationBlock({ node }: { node: EducationEntry }) {
           <Editable value={node.location} onCommit={(v) => u({ location: v || null })} className="text-[0.85em]" />
         )}
         <DateRange section={section} id={node.id} start={node.start_date} end={node.end_date} />
-        <HideButton hidden={node.hidden} onToggle={() => toggleNode(section, node.id)} label="entry" />
+        <EntryControls section={section} node={node} />
       </div>
       <div className="text-[0.9em] italic">
         <Editable value={node.degree} onCommit={(v) => u({ degree: v })} placeholder="Degree" />
@@ -174,7 +207,6 @@ function EducationBlock({ node }: { node: EducationEntry }) {
 
 function TechnicalBlock({ node }: { node: TechnicalEntry }) {
   const section: ResumeSectionKey = 'technical_projects_and_experience'
-  const toggleNode = useResumeStore((s) => s.toggleNode)
   const updateEntry = useResumeStore((s) => s.updateEntry)
   const u = (patch: Record<string, unknown>) => updateEntry(section, node.id, patch)
 
@@ -191,7 +223,7 @@ function TechnicalBlock({ node }: { node: TechnicalEntry }) {
           placeholder="Organization / role"
         />
         <DateRange section={section} id={node.id} start={node.start_date} end={node.end_date} />
-        <HideButton hidden={node.hidden} onToggle={() => toggleNode(section, node.id)} label="entry" />
+        <EntryControls section={section} node={node} />
       </div>
       <div className="text-[0.85em]">
         <span className="font-semibold">Tech: </span>
@@ -208,7 +240,6 @@ function TechnicalBlock({ node }: { node: TechnicalEntry }) {
 
 function WorkBlock({ node }: { node: WorkEntry }) {
   const section: ResumeSectionKey = 'other_work_history'
-  const toggleNode = useResumeStore((s) => s.toggleNode)
   const updateEntry = useResumeStore((s) => s.updateEntry)
   const u = (patch: Record<string, unknown>) => updateEntry(section, node.id, patch)
 
@@ -221,7 +252,7 @@ function WorkBlock({ node }: { node: WorkEntry }) {
           <Editable value={node.location} onCommit={(v) => u({ location: v || null })} className="text-[0.85em]" />
         )}
         <DateRange section={section} id={node.id} start={node.start_date} end={node.end_date} />
-        <HideButton hidden={node.hidden} onToggle={() => toggleNode(section, node.id)} label="entry" />
+        <EntryControls section={section} node={node} />
       </div>
       <EntryBullets section={section} node={node} />
     </div>

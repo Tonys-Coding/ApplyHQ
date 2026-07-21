@@ -195,6 +195,21 @@ export function nodeTitle(node: ResumeNode): string {
   return node.employer
 }
 
+/**
+ * A human, recognizable label for a node — used in the change log so entries
+ * read "Hid Sanctuary project" instead of "Hid a ..._experience entry".
+ * Prefers the memorable name (project title, employer/organization, school).
+ */
+export function entryLabel(node: ResumeNode): string {
+  if ('institution' in node) return node.institution || 'this school'
+  if ('title' in node) {
+    if (node.kind === 'project') return `${node.title || 'this'} project`.trim()
+    const who = node.organization || node.title || 'this'
+    return `${who} experience`
+  }
+  return `${node.employer || 'this'} experience`
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Edit-plan contract
 //
@@ -211,6 +226,7 @@ export type ResumeOpKind =
   | 'set_skills'
   | 'set_entry_kind'
   | 'move_entry'
+  | 'reorder_entry'
 
 export interface ResumeOperation {
   op: ResumeOpKind
@@ -224,6 +240,8 @@ export interface ResumeOperation {
   to_section: ResumeSectionKey | null
   /** Experience vs project, for set_entry_kind (and move into technical). */
   entry_kind: 'experience' | 'project' | null
+  /** 0-based destination index within the section, for reorder_entry. */
+  to_index: number | null
   /** One sentence, shown verbatim in the change log. */
   rationale: string
 }

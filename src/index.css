@@ -179,6 +179,16 @@
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
     }
+  /* Inside the resume page, headings (section titles) must use the resume's own
+     font — not the app heading font. Higher specificity wins over the rule above. */
+  [data-resume-page] h1,
+  [data-resume-page] h2,
+  [data-resume-page] h3,
+  [data-resume-page] h4,
+  [data-resume-page] h5,
+  [data-resume-page] h6 {
+    font-family: inherit;
+    }
 }
 
 @utility glass-panel {

@@ -126,6 +126,28 @@ export function applyEditPlan(resume: ResumeSections, plan: ResumeEditPlan): App
       continue
     }
 
+    // Reorder an entry within its own section (e.g. bottom -> top).
+    if (op.op === 'reorder_entry') {
+      if (op.to_index === null) {
+        rejected.push({ op, reason: 'reorder_entry without to_index' })
+        continue
+      }
+      const from = entries.findIndex((e) => e.id === entry.id)
+      const to = Math.max(0, Math.min(op.to_index, entries.length - 1))
+      if (from === to) continue
+      entries.splice(from, 1)
+      entries.splice(to, 0, entry)
+      applied.push({
+        op: op.op,
+        entry_id: entry.id,
+        bullet_id: null,
+        rationale: op.rationale,
+        before: `position ${from + 1}`,
+        after: `position ${to + 1}`,
+      })
+      continue
+    }
+
     // Flip a technical entry between the Experience and Projects sub-sections.
     if (op.op === 'set_entry_kind') {
       if (op.section !== 'technical_projects_and_experience') {

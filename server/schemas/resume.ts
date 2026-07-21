@@ -152,6 +152,7 @@ export const ResumeOperation = z.object({
     'set_skills',
     'set_entry_kind',
     'move_entry',
+    'reorder_entry',
   ]),
   section: ResumeSectionEnum.nullable().describe(
     "The entry's CURRENT section. null only for set_skills.",
@@ -180,6 +181,15 @@ export const ResumeOperation = z.object({
       'For set_entry_kind: flip a technical entry between the Experience and ' +
         'Projects sections. Also set this when move_entry targets ' +
         'technical_projects_and_experience. null otherwise.',
+    ),
+  to_index: z
+    .number()
+    .int()
+    .nullable()
+    .describe(
+      'For reorder_entry: the 0-based destination position within the SAME ' +
+        'section (0 = top). E.g. to move the last entry to the top, to_index=0. ' +
+        'null for every other op.',
     ),
   rationale: z
     .string()

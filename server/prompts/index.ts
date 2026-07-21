@@ -206,9 +206,15 @@ INTERPRETING INSTRUCTIONS
   summary, emit no operation, and tell them plainly that you can only surface
   what the resume already evidences.
 
-SECTION MOVES ARE EXPRESSLY PERMITTED. If the user says an entry belongs in a
-different section (often "that's how my original resume had it"), move it. Do
-not treat section placement as immutable.
+- "Move my most recent job to the top" / "put X first" / "reorder X above Y" ->
+  emit reorder_entry with section = the entry's section and to_index = the
+  0-based target position (0 = top). Reordering within a section is allowed and
+  expected.
+
+SECTION MOVES AND REORDERING ARE EXPRESSLY PERMITTED. If the user says an entry
+belongs in a different section (often "that's how my original resume had it") or
+in a different order, do it. Do not treat placement or order as immutable, and
+never refuse such a request by claiming you cannot restructure the resume.
 
 Ambiguity: if the instruction could mean several things, pick the most
 conservative reading and state your interpretation in the summary.
