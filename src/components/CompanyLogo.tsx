@@ -1,17 +1,21 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
 
 /**
- * Company logo tile with a graceful fallback.
+ * Company logo tile with layered fallbacks.
  *
- * JSearch logos are small and inconsistent, so we letterbox them with
- * object-contain on a white tile (never crop/stretch) — that's what makes them
- * "fit the square." When there's no logo (custom applications) or the image
- * fails to load, we render an initials monogram instead, so every card and job
- * still shows a tidy, consistent mark.
+ * 1. an explicit logo url (the JSearch employer_logo saved on a tracked job)
+ * 2. otherwise a favicon derived from the company name — this is what gives
+ *    cards saved before the logo column existed, and custom applications, a
+ *    real mark instead of only initials
+ * 3. finally an initials monogram
+ *
+ * Logos are letterboxed with object-contain on a white tile (never cropped or
+ * stretched) so inconsistent source images still fit the square. DuckDuckGo's
+ * icon service 404s on unknown domains, so a wrong/unknown guess falls cleanly
+ * through to the monogram rather than showing a generic globe.
  */
 
-/* Deterministic tile color from the name, so a company always looks the same. */
 const PALETTE = [
   'bg-rose-500',
   'bg-indigo-500',
@@ -23,10 +27,26 @@ const PALETTE = [
   'bg-orange-500',
 ]
 
+const SUFFIXES =
+  /\b(inc|llc|ltd|corp|corporation|co|company|group|technologies|technology|labs?|solutions|systems|holdings|plc|gmbh)\b\.?/gi
+
+/* Everything up to the first separator is the real name; the rest is taglines,
+   parent brands, etc. ("PVH (Tommy Hilfiger/Calvin Klein)" -> "PVH"). */
+function primaryName(name: string): string {
+  return (name.split(/[(/|,]/)[0] ?? name).replace(SUFFIXES, '').trim()
+}
+
+function guessFaviconUrl(name: string): string | null {
+  const slug = primaryName(name).toLowerCase().replace(/[^a-z0-9]/g, '')
+  return slug ? `https://icons.duckduckgo.com/ip3/${slug}.com.ico` : null
+}
+
 function initials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean)
-  if (words.length === 0) return '?'
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase()
+  const words = primaryName(name)
+    .split(/\s+/)
+    .filter((w) => /[a-z0-9]/i.test(w))
+  if (words.length === 0) return name.trim().slice(0, 2).toUpperCase() || '?'
+  if (words.length === 1) return words[0].replace(/[^a-z0-9]/gi, '').slice(0, 2).toUpperCase()
   return (words[0][0] + words[1][0]).toUpperCase()
 }
 
@@ -45,10 +65,22 @@ export function CompanyLogo({
   name: string
   className?: string
 }) {
-  const [failed, setFailed] = useState(false)
-  const showImg = src && !failed
+  /* Ordered candidate images; onError advances to the next, and running off the
+     end shows the monogram. */
+  const candidates = useMemo(() => {
+    const list: string[] = []
+    if (src) list.push(src)
+    const favicon = guessFaviconUrl(name)
+    if (favicon) list.push(favicon)
+    return list
+  }, [src, name])
 
-  if (showImg) {
+  const [idx, setIdx] = useState(0)
+  useEffect(() => setIdx(0), [candidates])
+
+  const current = candidates[idx]
+
+  if (current) {
     return (
       <div
         className={cn(
@@ -57,10 +89,10 @@ export function CompanyLogo({
         )}
       >
         <img
-          src={src}
+          src={current}
           alt={`${name} logo`}
           loading="lazy"
-          onError={() => setFailed(true)}
+          onError={() => setIdx((i) => i + 1)}
           className="size-full object-contain p-1"
         />
       </div>
