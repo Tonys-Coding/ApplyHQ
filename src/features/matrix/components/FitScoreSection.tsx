@@ -46,7 +46,10 @@ export function FitScoreSection() {
     setLoading(true)
     setError(null)
     try {
-      setReport(await requestFitScore({ jobDescription, resume: current }))
+      const r = await requestFitScore({ jobDescription, resume: current })
+      setReport(r)
+      /* Remember the score on the resume so the hub card can badge it. */
+      void useResumeStore.getState().recordFitScore(r.fitScore)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not compute fit score.')
     } finally {

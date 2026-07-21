@@ -15,17 +15,22 @@ const STAGE_COPY: Record<IngestStage, string> = {
  * Drag-and-drop PDF upload for the empty state. Shares the ingest pipeline with
  * the "New base resume" action via useIngestFile.
  */
-export function ResumeUpload() {
+export function ResumeUpload({ onComplete }: { onComplete?: () => void }) {
   const { ingest, stage, busy } = useIngestFile()
   const [dragging, setDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  async function handle(file: File) {
+    const ok = await ingest(file)
+    if (ok) onComplete?.()
+  }
 
   function onDrop(e: React.DragEvent) {
     e.preventDefault()
     setDragging(false)
     if (busy) return
     const file = e.dataTransfer.files?.[0]
-    if (file) void ingest(file)
+    if (file) void handle(file)
   }
 
   return (
@@ -56,8 +61,8 @@ export function ResumeUpload() {
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0]
-            if (file) void ingest(file)
-            e.target.value = '' // allow re-selecting the same file
+            if (file) void handle(file)
+            e.target.value = '' /* allow re-selecting the same file */
           }}
         />
 

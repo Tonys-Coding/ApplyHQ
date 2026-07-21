@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
-import { Download, FileDown, FileUp, Loader2, Minimize2, MoreHorizontal, RotateCcw, Type } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { ArrowLeft, Download, FileDown, FileUp, Loader2, Minimize2, MoreHorizontal, RotateCcw, Type } from 'lucide-react'
 import { toast } from 'sonner'
 import { useResumeStore } from '@/stores/useResumeStore'
 import { FONT_STACKS, fontChoiceOf, type FontChoice } from '@/types/domain'
@@ -106,6 +107,14 @@ export function FormatToolbar() {
 
   return (
     <div className="no-print flex h-12 shrink-0 items-center gap-3 overflow-x-auto border-b bg-background px-4">
+      <Button asChild variant="ghost" size="icon" className="size-8 shrink-0" aria-label="Back to resumes">
+        <Link to="/resumes">
+          <ArrowLeft className="size-4" />
+        </Link>
+      </Button>
+
+      <Separator orientation="vertical" className="h-5" />
+
       <div className="flex items-center gap-2">
         <Type className="size-4 text-muted-foreground" />
         <Slider

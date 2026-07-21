@@ -1,5 +1,6 @@
 import { env } from './lib/env'
 import { parseResume } from './routes/resume'
+import { duplicateResumeRoute } from './routes/resumes'
 import { searchJobsRoute } from './routes/jobs'
 import { copilotRoute, fitScoreRoute, structureRoute, tailorRoute } from './routes/ai'
 
@@ -25,6 +26,9 @@ const server = Bun.serve({
 
     // Deterministic: PDF bytes -> text. No model, no cost.
     '/api/resume/parse': { POST: parseResume },
+
+    // Clones a resume under RLS (user-scoped client, no service role).
+    '/api/resumes/:id/duplicate': { POST: duplicateResumeRoute },
 
     // Cached + quota-guarded. See lib/cache.ts for why it's disk-backed.
     '/api/jobs/search': { GET: searchJobsRoute },

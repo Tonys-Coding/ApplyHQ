@@ -106,6 +106,8 @@ export interface FormatSettings {
   header: ResumeHeader
   /** The freshly-parsed resume, for Revert to original. Absent on old rows. */
   original?: ResumeSnapshot
+  /** Most recent Fit Score computed against this resume — drives the hub badge. */
+  last_fit_score?: number
 }
 
 /** The three font stacks for the toolbar override — bundled metric-clone fonts. */

@@ -7,6 +7,7 @@ import { Auth } from '@/routes/Auth'
 import { Board } from '@/routes/Board'
 import { Discover } from '@/routes/Discover'
 import { JobDetail } from '@/routes/JobDetail'
+import { ResumesHub } from '@/routes/ResumesHub'
 import { ResumeWorkspace } from '@/routes/ResumeWorkspace'
 
 /**
@@ -35,7 +36,9 @@ export default function App() {
               <Route path="/board" element={<Board />} />
               <Route path="/discover" element={<Discover />} />
               <Route path="/discover/:id" element={<JobDetail />} />
-              <Route path="/workspace" element={<ResumeWorkspace />} />
+              <Route path="/resumes" element={<ResumesHub />} />
+              <Route path="/workspace/:id" element={<ResumeWorkspace />} />
+              <Route path="/workspace" element={<Navigate to="/resumes" replace />} />
             </Route>
             <Route path="*" element={<Navigate to="/board" replace />} />
           </Routes>

@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, EyeOff, Plus } from 'lucide-react'
+import { ChevronDown, ChevronUp, EyeOff, Loader2, Plus } from 'lucide-react'
 import { useResumeStore } from '@/stores/useResumeStore'
 import { ResumeUpload } from '@/components/ResumeUpload'
 import { Editable } from './Editable'
@@ -347,7 +347,16 @@ function SkillsBlock() {
 export function DocumentCanvas() {
   const resume = useResumeStore((s) => s.resume)
   const format = useResumeStore((s) => s.format)
+  const loading = useResumeStore((s) => s.loading)
 
+  /* While a load is in flight, don't flash the upload zone. */
+  if (!resume && loading) {
+    return (
+      <div className="grid h-full place-items-center">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
   if (!resume) return <ResumeUpload />
 
   const tech = resume.technical_projects_and_experience

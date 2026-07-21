@@ -16,18 +16,18 @@ export function useIngestFile() {
   const [stage, setStage] = useState<IngestStage | null>(null)
   const busy = stage !== null && stage !== 'done'
 
-  async function ingest(file: File) {
+  async function ingest(file: File): Promise<boolean> {
     if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
       toast.error('PDF only', { description: 'Please upload a .pdf file.' })
-      return
+      return false
     }
     if (file.size > MAX_BYTES) {
       toast.error('File too large', { description: 'Maximum size is 10 MB.' })
-      return
+      return false
     }
     if (file.size === 0) {
       toast.error('Empty file', { description: 'That PDF has no content.' })
-      return
+      return false
     }
 
     let failedStage: IngestStage | null = null
@@ -40,6 +40,7 @@ export function useIngestFile() {
       toast.success('Resume ready', {
         description: parsedName ? `Parsed ${parsedName}'s resume.` : 'Your resume is loaded.',
       })
+      return true
     } catch (err) {
       const message =
         err instanceof ApiError || err instanceof Error ? err.message : 'Upload failed.'
@@ -52,6 +53,7 @@ export function useIngestFile() {
               ? 'Saving failed'
               : 'Upload failed'
       toast.error(where, { description: message })
+      return false
     } finally {
       setStage(null)
     }

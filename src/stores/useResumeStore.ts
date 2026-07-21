@@ -60,6 +60,9 @@ interface ResumeState {
   /** Restore the resume to its originally-parsed state, if a snapshot exists. */
   revertToOriginal: () => boolean
 
+  /** Persist the latest Fit Score onto this resume (drives the hub badge). */
+  recordFitScore: (score: number) => Promise<void>
+
   /** Current resume as the bare sections the edit-plan engine needs. */
   sections: () => ResumeSections | null
   /** Apply a model edit plan to live state, logging every change. */
@@ -339,6 +342,16 @@ export const useResumeStore = create<ResumeState>((set, get) => ({
       node_id: nodeId,
       summary: `Moved ${entryLabel(moved)} ${dir}`,
     })
+  },
+
+  recordFitScore: async (score) => {
+    const { resume, format } = get()
+    if (!resume) return
+    const next = { ...format, last_fit_score: score }
+    set({ format: next })
+    /* Targeted update of format_settings only — never sweeps up unsaved
+       content edits the user hasn't chosen to save yet. */
+    await supabase.from('resumes').update({ format_settings: next }).eq('id', resume.id)
   },
 
   revertToOriginal: () => {

@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { LogOut, User as UserIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { LogoWordmark } from '@/components/brand/Logo'
@@ -19,7 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 const NAV = [
   { to: '/board', label: 'Tracker' },
   { to: '/discover', label: 'Discover' },
-  { to: '/workspace', label: 'Resume' },
+  { to: '/resumes', label: 'Resumes' },
 ] as const
 
 /**
@@ -32,6 +32,8 @@ export function TopNav() {
   const signOut = useSessionStore((s) => s.signOut)
   const applications = useJobStore((s) => s.applications)
   const ghosted = selectGhostedCount(applications)
+  /* The editor lives under /workspace/:id but belongs to the Resumes tab. */
+  const inWorkspace = useLocation().pathname.startsWith('/workspace')
 
   const name = (user?.user_metadata?.full_name as string | undefined) ?? user?.email ?? ''
   const avatar = user?.user_metadata?.avatar_url as string | undefined
@@ -51,7 +53,7 @@ export function TopNav() {
               className={({ isActive }) =>
                 cn(
                   'relative whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                  isActive
+                  isActive || (to === '/resumes' && inWorkspace)
                     ? 'text-primary'
                     : 'text-muted-foreground hover:bg-primary/10 hover:text-primary',
                 )
