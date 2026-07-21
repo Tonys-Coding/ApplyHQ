@@ -58,17 +58,24 @@ export const useJobStore = create<JobState>((set, get) => ({
       return
     }
 
-    const { data, error } = await supabase
-      .from('job_applications')
-      .insert({ ...input, user_id: auth.user.id })
-      .select()
-      .single()
+    const row = { ...input, user_id: auth.user.id }
+    const insert = (payload: JobApplicationInsert) =>
+      supabase.from('job_applications').insert(payload).select().single()
 
-    if (error) {
-      set({ error: error.message })
+    let res = await insert(row)
+
+    // Degrade gracefully if 0004_company_logo.sql hasn't been run yet: retry
+    // without the logo column rather than failing the save outright.
+    if (res.error && /company_logo/.test(res.error.message)) {
+      const { company_logo: _omit, ...withoutLogo } = row
+      res = await insert(withoutLogo)
+    }
+
+    if (res.error) {
+      set({ error: res.error.message })
       return
     }
-    set({ applications: [...get().applications, data] })
+    set({ applications: [...get().applications, res.data] })
   },
 
   /**

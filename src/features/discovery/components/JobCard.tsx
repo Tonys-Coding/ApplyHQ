@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
+import { CompanyLogo } from '@/components/CompanyLogo'
 
 export function JobCard({
   job,
@@ -74,18 +75,7 @@ export function JobCard({
       )}
 
       <div className="flex items-start gap-4">
-        <div className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-lg border border-white/10 bg-secondary">
-          {job.companyLogo ? (
-            <img
-              src={job.companyLogo}
-              alt=""
-              className="size-full object-cover"
-              onError={(e) => (e.currentTarget.style.display = 'none')}
-            />
-          ) : (
-            <Building2 className="size-5 text-muted-foreground" />
-          )}
-        </div>
+        <CompanyLogo src={job.companyLogo} name={job.company} className="size-12 text-sm" />
 
         <div className="min-w-0 flex-1">
           <button

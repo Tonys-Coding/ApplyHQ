@@ -95,6 +95,7 @@ export interface Database {
           id: string
           user_id: string
           company_name: string
+          company_logo: string | null
           role_title: string
           stage: ApplicationStage
           salary_or_hourly_rate: string | null
@@ -113,6 +114,7 @@ export interface Database {
           id?: string
           user_id: string
           company_name: string
+          company_logo?: string | null
           role_title: string
           stage?: ApplicationStage
           salary_or_hourly_rate?: string | null

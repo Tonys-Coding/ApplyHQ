@@ -19,6 +19,7 @@ import { TERM_LABELS } from '@/features/discovery/lib/termPresets'
 import { mapPostingToApplication } from '@/features/discovery/lib/mapToApplication'
 import { useJobStore, selectSavedApplyLinks } from '@/stores/useJobStore'
 import type { JobPosting } from '@/types/jobs'
+import { CompanyLogo } from '@/components/CompanyLogo'
 import { cn } from '@/lib/utils'
 
 /**
@@ -209,18 +210,7 @@ function ApplyCard({ job }: { job: JobPosting }) {
       <div className="absolute left-1/2 top-0 h-1 w-40 -translate-x-1/2 bg-primary blur-md" />
 
       <div className="flex items-center gap-4">
-        <div className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl border border-white/10 bg-secondary">
-          {job.companyLogo ? (
-            <img
-              src={job.companyLogo}
-              alt=""
-              className="size-full object-cover"
-              onError={(e) => (e.currentTarget.style.display = 'none')}
-            />
-          ) : (
-            <Building2 className="size-6 text-muted-foreground" />
-          )}
-        </div>
+        <CompanyLogo src={job.companyLogo} name={job.company} className="size-14 rounded-xl text-base" />
         <div className="min-w-0">
           <h3 className="font-heading truncate text-lg font-semibold">{job.company}</h3>
           {job.publisher && (

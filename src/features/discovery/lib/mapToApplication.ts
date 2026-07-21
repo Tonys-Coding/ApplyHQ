@@ -15,6 +15,7 @@ export function mapPostingToApplication(
 ): Omit<JobApplicationInsert, 'user_id'> {
   return {
     company_name: job.company,
+    company_logo: job.companyLogo,
     role_title: job.title,
     stage: 'pending',
     job_location: job.location ?? (job.isRemote ? 'Remote' : null),
