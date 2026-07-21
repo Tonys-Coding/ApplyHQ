@@ -13,9 +13,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { QuickTogglesPopover } from './QuickTogglesPopover'
 import { STRICTNESS_LABELS, type Strictness } from '@/types/domain'
 
 const OPTIONS: Strictness[] = ['strict', 'balanced', 'creative']
+
+/** Compact strictness labels for the composer's inline select. */
+const SHORT_STRICTNESS: Record<Strictness, string> = {
+  strict: 'Strict',
+  balanced: 'Balanced',
+  creative: 'Creative',
+}
 
 export function PromptComposer() {
   const [prompt, setPrompt] = useState('')
@@ -90,10 +98,10 @@ export function PromptComposer() {
           disabled={!resumeLoaded || busy}
           className="resize-none border-0 px-3 py-2 text-sm shadow-none focus-visible:ring-0"
         />
-        <div className="flex items-center gap-2 p-1.5 pt-0">
+        <div className="flex items-center gap-1 p-1.5 pt-0">
           <Select value={strictness} onValueChange={(v) => setStrictness(v as Strictness)}>
             <SelectTrigger size="sm" className="h-7 w-auto gap-1 border-0 text-xs shadow-none">
-              <SelectValue />
+              <SelectValue>{SHORT_STRICTNESS[strictness]}</SelectValue>
             </SelectTrigger>
             <SelectContent align="start">
               {OPTIONS.map((o) => (
@@ -103,6 +111,8 @@ export function PromptComposer() {
               ))}
             </SelectContent>
           </Select>
+
+          <QuickTogglesPopover />
 
           <Button
             size="icon"

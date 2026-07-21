@@ -1,12 +1,8 @@
 import { useRef, useState } from 'react'
 import { FileText, Loader2, UploadCloud } from 'lucide-react'
-import { toast } from 'sonner'
-import { ingestResume, type IngestStage } from '@/features/resume/lib/ingest'
-import { useResumeStore } from '@/stores/useResumeStore'
-import { ApiError } from '@/lib/api'
+import { useIngestFile } from '@/features/resume/lib/useIngestFile'
+import type { IngestStage } from '@/features/resume/lib/ingest'
 import { cn } from '@/lib/utils'
-
-const MAX_BYTES = 10 * 1024 * 1024
 
 const STAGE_COPY: Record<IngestStage, string> = {
   extracting: 'Extracting text from your PDF…',
@@ -16,62 +12,20 @@ const STAGE_COPY: Record<IngestStage, string> = {
 }
 
 /**
- * Drag-and-drop PDF upload. Runs the full ingest pipeline and, on success,
- * refreshes the resume store so the canvas swaps from empty state to the parsed
- * document without a reload.
+ * Drag-and-drop PDF upload for the empty state. Shares the ingest pipeline with
+ * the "New base resume" action via useIngestFile.
  */
 export function ResumeUpload() {
-  const loadMaster = useResumeStore((s) => s.loadMaster)
+  const { ingest, stage, busy } = useIngestFile()
   const [dragging, setDragging] = useState(false)
-  const [stage, setStage] = useState<IngestStage | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-
-  const busy = stage !== null && stage !== 'done'
-
-  async function handleFile(file: File) {
-    // Validate before spending a round trip. The server re-checks (magic bytes,
-    // size) — this is just fast, friendly feedback.
-    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-      toast.error('PDF only', { description: 'Please upload a .pdf file.' })
-      return
-    }
-    if (file.size > MAX_BYTES) {
-      toast.error('File too large', { description: 'Maximum size is 10 MB.' })
-      return
-    }
-    if (file.size === 0) {
-      toast.error('Empty file', { description: 'That PDF has no content.' })
-      return
-    }
-
-    try {
-      const { parsedName } = await ingestResume(file, setStage)
-      await loadMaster() // swap empty state -> parsed resume
-      toast.success('Master resume ready', {
-        description: parsedName ? `Parsed ${parsedName}'s resume.` : 'Your resume is loaded.',
-      })
-    } catch (err) {
-      const message = err instanceof ApiError || err instanceof Error ? err.message : 'Upload failed.'
-      // Which stage failed is the most useful thing to tell the user.
-      const where =
-        stage === 'extracting'
-          ? 'PDF extraction failed'
-          : stage === 'structuring'
-            ? 'AI structuring failed'
-            : stage === 'saving'
-              ? 'Saving failed'
-              : 'Upload failed'
-      toast.error(where, { description: message })
-      setStage(null)
-    }
-  }
 
   function onDrop(e: React.DragEvent) {
     e.preventDefault()
     setDragging(false)
     if (busy) return
     const file = e.dataTransfer.files?.[0]
-    if (file) void handleFile(file)
+    if (file) void ingest(file)
   }
 
   return (
@@ -102,7 +56,7 @@ export function ResumeUpload() {
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0]
-            if (file) void handleFile(file)
+            if (file) void ingest(file)
             e.target.value = '' // allow re-selecting the same file
           }}
         />

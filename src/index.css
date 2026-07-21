@@ -193,6 +193,15 @@
   background: linear-gradient(135deg, #a40217 0%, #68000a 100%);
 }
 
+/* While capturing the resume to PNG for the PDF download: hide edit-only
+   affordances and empty-field placeholders so they don't bake into the file. */
+.exporting .no-print {
+  display: none !important;
+}
+.exporting [data-placeholder]:empty::before {
+  content: "" !important;
+}
+
 /* Print / "Download PDF": isolate the resume page, drop chrome and edit
    affordances, and let the page's own padding become the print margin. */
 @media print {

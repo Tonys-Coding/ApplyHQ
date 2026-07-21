@@ -156,7 +156,15 @@ export const ResumeOperation = z.object({
   bullet_id: z.string().nullable().describe('Required for bullet ops; null otherwise.'),
   text: z.string().nullable().describe('New bullet text. Required for rewrite_bullet.'),
   hidden: z.boolean().nullable().describe('Required for the *_hidden ops.'),
-  skills: z.array(z.string()).nullable().describe('Full replacement list. Required for set_skills.'),
+  skills: z
+    .array(z.string())
+    .nullable()
+    .describe(
+      'Full replacement for skills, Required for set_skills. Preserve the ' +
+        'existing GROUPED-LINE format — one element per category line, e.g. ' +
+        '"Languages: Python, C". Never explode into one-skill-per-element and ' +
+        'never drop the category labels.',
+    ),
   rationale: z
     .string()
     .describe('One short sentence, shown verbatim in the user-facing change log.'),

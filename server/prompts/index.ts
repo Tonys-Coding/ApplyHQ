@@ -242,6 +242,14 @@ GENERAL
 - Extraction is line-based and may have joined or split things oddly. Reassemble
   with judgement, but never embellish.
 
+COMPLETENESS — this is critical.
+- Include EVERY bullet point from every entry. Do not drop, merge, summarize, or
+  deduplicate bullets. If an entry has six bullets, return six bullets.
+- One printed bullet = one bullets[] element. A bullet that wrapped onto two
+  visual lines is still ONE bullet — rejoin it. Two separate bullets stay two.
+- Do not move a bullet from one entry to another. Bullets belong to the entry
+  they appear under.
+
 HEADER (top of the resume)
 - full_name: the person's name. headline: a tagline under it, if present.
 - contact_lines: the contact block EXACTLY as printed, one element per visual

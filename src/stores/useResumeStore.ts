@@ -53,6 +53,9 @@ interface ResumeState {
   /** Append a new empty, user-authored bullet to an entry. */
   addBullet: (section: ResumeSectionKey, nodeId: string) => void
 
+  /** Restore the resume to its originally-parsed state, if a snapshot exists. */
+  revertToOriginal: () => boolean
+
   /** Current resume as the bare sections the edit-plan engine needs. */
   sections: () => ResumeSections | null
   /** Apply a model edit plan to live state, logging every change. */
@@ -294,6 +297,27 @@ export const useResumeStore = create<ResumeState>((set, get) => ({
         ),
       },
     })
+  },
+
+  revertToOriginal: () => {
+    const { resume, format } = get()
+    const snap = format.original
+    if (!resume || !snap) return false
+
+    // Deep clone the snapshot so future edits can't mutate the frozen original.
+    const clone = structuredClone(snap)
+    set({
+      resume: {
+        ...resume,
+        education: clone.education,
+        technical_projects_and_experience: clone.technical_projects_and_experience,
+        other_work_history: clone.other_work_history,
+        skills_and_keywords: clone.skills_and_keywords,
+      },
+      format: { ...format, header: clone.header },
+    })
+    get().logChange({ kind: 'user_edit', summary: 'Reverted to the original uploaded resume' })
+    return true
   },
 
   logChange: (entry) =>

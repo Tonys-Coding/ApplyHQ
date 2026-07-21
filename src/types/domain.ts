@@ -80,10 +80,22 @@ export interface ResumeHeader {
 }
 
 /**
+ * A frozen copy of the resume as first parsed — restored by "Revert to original".
+ * Header lives here too so a revert also restores name/contact edits.
+ */
+export interface ResumeSnapshot {
+  header: ResumeHeader
+  education: EducationEntry[]
+  technical_projects_and_experience: TechnicalEntry[]
+  other_work_history: WorkEntry[]
+  skills_and_keywords: string[]
+}
+
+/**
  * Document presentation + preserved meta, persisted in the resumes.format_settings
  * JSONB column. Beyond the editor's font/margin controls it also carries the
- * retained font family and the header, so both survive round-trips without a
- * schema change.
+ * retained font family, the header, and the original-parse snapshot, so all
+ * survive round-trips without a schema change.
  */
 export interface FormatSettings {
   font_size: number
@@ -92,6 +104,8 @@ export interface FormatSettings {
   /** CSS font stack matching the uploaded PDF (serif vs sans). */
   font_family: string
   header: ResumeHeader
+  /** The freshly-parsed resume, for Revert to original. Absent on old rows. */
+  original?: ResumeSnapshot
 }
 
 /** The three font stacks the resume can use, matched to the detected PDF font. */

@@ -180,13 +180,29 @@ export async function ingestResume(
   // name + contact live in format_settings.header, preserved from the PDF and
   // rendered as the document heading. The two were being conflated before.
   onStage('saving')
+
+  const education = toEducation(structured.education ?? [])
+  const technical = toTechnical(structured.technical_projects_and_experience ?? [])
+  const otherWork = toWork(structured.other_work_history ?? [])
+  const skills = repairSkillLines(structured.skills_and_keywords ?? [])
+  const header = {
+    full_name: structured.full_name ?? '',
+    headline: structured.headline ?? null,
+    contact_lines: structured.contact_lines ?? [],
+  }
+
   const format: FormatSettings = {
     ...DEFAULT_FORMAT_SETTINGS,
     font_family: parsed.fontFamily || DEFAULT_FORMAT_SETTINGS.font_family,
-    header: {
-      full_name: structured.full_name ?? '',
-      headline: structured.headline ?? null,
-      contact_lines: structured.contact_lines ?? [],
+    header,
+    // Snapshot the freshly-parsed resume so "Revert to original" can restore it
+    // no matter how much the user or the AI later changes.
+    original: {
+      header,
+      education,
+      technical_projects_and_experience: technical,
+      other_work_history: otherWork,
+      skills_and_keywords: skills,
     },
   }
 
@@ -194,12 +210,10 @@ export async function ingestResume(
     user_id: auth.user.id,
     version_name: 'Master Resume',
     is_master: true,
-    education: toEducation(structured.education ?? []),
-    technical_projects_and_experience: toTechnical(
-      structured.technical_projects_and_experience ?? [],
-    ),
-    other_work_history: toWork(structured.other_work_history ?? []),
-    skills_and_keywords: structured.skills_and_keywords ?? [],
+    education,
+    technical_projects_and_experience: technical,
+    other_work_history: otherWork,
+    skills_and_keywords: skills,
     format_settings: format,
   }
 
@@ -243,4 +257,22 @@ export async function ingestResume(
 
 function pruneNull<T extends Record<string, unknown>>(obj: T): Partial<T> {
   return Object.fromEntries(Object.entries(obj).filter(([, v]) => v != null)) as Partial<T>
+}
+
+/**
+ * Fallback repair for when the model ignores the "keep skills as grouped lines"
+ * instruction and returns one skill per element. If most elements look like a
+ * single skill (short, no "Category:" label), we collapse them back into one
+ * comma-joined line so the display isn't a tall column of one-word rows.
+ * Lines that already carry a label are left exactly as-is.
+ */
+function repairSkillLines(lines: string[]): string[] {
+  const cleaned = lines.map((l) => l.trim()).filter(Boolean)
+  if (cleaned.length <= 2) return cleaned
+
+  const labeled = cleaned.filter((l) => /^[^:]{1,30}:/.test(l))
+  const looksExploded =
+    labeled.length === 0 && cleaned.every((l) => !l.includes(',') && l.length < 30)
+
+  return looksExploded ? [cleaned.join(', ')] : cleaned
 }

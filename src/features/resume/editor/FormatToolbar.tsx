@@ -1,12 +1,22 @@
-import { useState } from 'react'
-import { Download, Loader2, Type } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { Download, FileUp, Loader2, Minimize2, MoreHorizontal, RotateCcw, Type } from 'lucide-react'
 import { toast } from 'sonner'
 import { useResumeStore } from '@/stores/useResumeStore'
 import { FONT_STACKS, fontChoiceOf, type FontChoice } from '@/types/domain'
+import { downloadResumePdf } from '@/features/resume/lib/exportPdf'
+import { computeFitToOnePage } from '@/features/resume/lib/fitToPage'
+import { useIngestFile } from '@/features/resume/lib/useIngestFile'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { Separator } from '@/components/ui/separator'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 const MARGIN_PRESETS = [
   { value: '0.4', label: 'Narrow' },
@@ -20,35 +30,66 @@ const FONT_PRESETS: { value: FontChoice; label: string }[] = [
   { value: 'mono', label: 'Mono' },
 ]
 
+const resumeNode = () => document.querySelector<HTMLElement>('[data-resume-page]')
+
 export function FormatToolbar() {
   const format = useResumeStore((s) => s.format)
   const setFormat = useResumeStore((s) => s.setFormat)
   const save = useResumeStore((s) => s.save)
+  const revert = useResumeStore((s) => s.revertToOriginal)
   const resumeLoaded = useResumeStore((s) => !!s.resume)
-  const [busy, setBusy] = useState(false)
+  const hasOriginal = useResumeStore((s) => !!s.format.original)
 
-  /**
-   * One action, both jobs: persist to the account (access anytime) AND hand the
-   * user a file. The download is the browser's print-to-PDF over the isolated
-   * .resume-print page — a true vector PDF in the resume's own font, no extra
-   * dependency. The user picks "Save as PDF" (or a printer) in the dialog.
-   */
+  const { ingest, busy: ingesting } = useIngestFile()
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [downloading, setDownloading] = useState(false)
+
+  function fitToPage() {
+    const node = resumeNode()
+    if (!node) return
+    const r = computeFitToOnePage(node, format)
+    setFormat({ font_size: r.font_size, line_height: r.line_height, margin: r.margin })
+    toast[r.fits ? 'success' : 'warning'](
+      r.fits ? 'Fit to one page' : 'Tightened as far as it goes',
+      {
+        description: r.fits
+          ? `Font ${r.font_size}pt.`
+          : 'Still over one page — hide a few bullets or entries to finish.',
+      },
+    )
+  }
+
+  /** Save to the account AND download a PDF straight to Downloads. */
   async function saveAndDownload() {
-    setBusy(true)
+    const node = resumeNode()
+    if (!node) return
+    setDownloading(true)
     await save()
-    const err = useResumeStore.getState().error
-    setBusy(false)
-    if (err) {
-      toast.error('Could not save', { description: err })
+    if (useResumeStore.getState().error) {
+      toast.error('Could not save', { description: useResumeStore.getState().error! })
+      setDownloading(false)
       return
     }
-    toast.success('Saved to your account', { description: 'Opening PDF download…' })
-    // Let the toast paint before the print dialog seizes the thread.
-    setTimeout(() => window.print(), 150)
+    try {
+      const name = format.header.full_name?.trim() || 'resume'
+      await downloadResumePdf(node, `${name} — Resume.pdf`)
+      toast.success('Saved & downloaded', { description: 'Check your Downloads folder.' })
+    } catch (err) {
+      toast.error('Download failed', {
+        description: err instanceof Error ? err.message : 'Could not generate the PDF.',
+      })
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  function onRevert() {
+    if (revert()) toast.success('Reverted to your original uploaded resume')
+    else toast.info('No original snapshot for this resume')
   }
 
   return (
-    <div className="no-print flex h-12 shrink-0 items-center gap-4 overflow-x-auto border-b bg-background px-4">
+    <div className="no-print flex h-12 shrink-0 items-center gap-3 overflow-x-auto border-b bg-background px-4">
       <div className="flex items-center gap-2">
         <Type className="size-4 text-muted-foreground" />
         <Slider
@@ -60,8 +101,8 @@ export function FormatToolbar() {
           className="w-24"
           aria-label="Font size"
         />
-        <span className="w-12 text-xs tabular-nums text-muted-foreground">
-          {format.font_size.toFixed(2)}pt
+        <span className="w-11 text-xs tabular-nums text-muted-foreground">
+          {format.font_size.toFixed(1)}pt
         </span>
       </div>
 
@@ -82,7 +123,6 @@ export function FormatToolbar() {
 
       <Separator orientation="vertical" className="h-5" />
 
-      {/* Font family — defaults to the detected PDF font; override if wrong. */}
       <ToggleGroup
         type="single"
         size="sm"
@@ -96,8 +136,6 @@ export function FormatToolbar() {
           </ToggleGroupItem>
         ))}
       </ToggleGroup>
-
-      <Separator orientation="vertical" className="h-5" />
 
       <ToggleGroup
         type="single"
@@ -113,11 +151,46 @@ export function FormatToolbar() {
         ))}
       </ToggleGroup>
 
-      <div className="ml-auto">
-        <Button size="sm" onClick={saveAndDownload} disabled={busy || !resumeLoaded}>
-          {busy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+      <div className="ml-auto flex items-center gap-2">
+        <Button variant="outline" size="sm" onClick={fitToPage} disabled={!resumeLoaded}>
+          <Minimize2 className="size-4" />
+          Fit to one page
+        </Button>
+
+        <Button size="sm" onClick={saveAndDownload} disabled={downloading || !resumeLoaded}>
+          {downloading ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
           Save &amp; Download
         </Button>
+
+        <input
+          ref={fileRef}
+          type="file"
+          accept="application/pdf,.pdf"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file) void ingest(file)
+            e.target.value = ''
+          }}
+        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="size-8" aria-label="More actions">
+              {ingesting ? <Loader2 className="size-4 animate-spin" /> : <MoreHorizontal className="size-4" />}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => fileRef.current?.click()}>
+              <FileUp className="size-4" />
+              Upload new base resume
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onRevert} disabled={!hasOriginal}>
+              <RotateCcw className="size-4" />
+              Revert to original
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   )
